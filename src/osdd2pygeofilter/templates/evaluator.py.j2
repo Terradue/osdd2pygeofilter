@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from types import MappingProxyType
 from typing import TYPE_CHECKING, TypeAlias, TypeVar
+from urllib.parse import urlsplit
 
 import requests
 
@@ -23,6 +24,7 @@ from pygeofilter.backends.evaluator import Evaluator, handle  # type: ignore[imp
 from pygeofilter.parsers.cql2_json import parse as parse_json  # type: ignore[import-untyped]
 from pygeofilter.parsers.cql2_text import parse as parse_text  # type: ignore[import-untyped]
 from pygeoif.factories import shape
+from uritemplate import URITemplate
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping
@@ -327,6 +329,34 @@ def from_cql2_json(
     return to_opensearch(parse_json(expression), attribute_map=attribute_map)
 
 
+def _expand_url(parameters: Mapping[str, str]) -> str:
+    """Substitute decoded values into the original OpenSearch URL template.
+
+    Missing optional values become empty strings. Literal URL text, including
+    separators and existing escapes, remains unchanged. A temporary syntax
+    adapter maps OpenSearch placeholders to RFC 6570 variables; URITemplate
+    performs expansion and encoding without modifying URL_TEMPLATE.
+
+    Raises:
+        ValueError: If expansion does not produce an absolute HTTP(S) URL.
+    """
+    replacements = {binding.property: parameters.get(binding.query, "") for binding in BINDINGS}
+    variables: dict[str, str] = {}
+
+    def adapt_placeholder(match: re.Match[str]) -> str:
+        # OpenSearch QNames and optional suffixes are not RFC 6570 variables.
+        name = f"value{len(variables)}"
+        variables[name] = replacements[match[1].removesuffix("?")]
+        return "{" + name + "}"
+
+    template = re.sub(r"\{([^{}]+)\}", adapt_placeholder, URL_TEMPLATE)
+    url = URITemplate(template).expand(None, **variables)
+    parsed = urlsplit(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise ValueError("Expanded template must be an absolute HTTP(S) URL")
+    return url
+
+
 def invoke(
     result: dict[str, str],
     defaults: Mapping[str, str] | None = None,
@@ -348,8 +378,7 @@ def invoke(
     validate_parameters(BINDINGS, supplied, DECLARATIONS, OFFSETS)
 
     response = requests.get(
-        URL_TEMPLATE,
-        params={**supplied, **FIXED},
+        _expand_url(supplied),
         timeout=30,
     )
     response.raise_for_status()
