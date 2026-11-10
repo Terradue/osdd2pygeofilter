@@ -319,9 +319,6 @@ def _facet_sort(value: str) -> None:
 
 def _advertised(value: str, binding: Binding) -> None:
     constraints = binding.constraints
-    options = tuple(option for key, option in constraints if key == "option")
-    if options:
-        _advertised_options(binding, value, options)
     for key, bound in constraints:
         if key == "pattern" and re.fullmatch(bound, value) is None:
             raise ValueError(f"Value does not match parameter pattern: {value}")
@@ -435,17 +432,6 @@ def _step(value: str, step: str, base: str) -> None:
     quotient = (_number(value) - _number(base)) / _number(step)
     if not math.isclose(quotient, round(quotient)):
         raise ValueError("Value violates parameter step")
-
-
-def _advertised_options(binding: Binding, value: str, options: tuple[str, ...]) -> None:
-    if (binding.namespace, binding.local) == (SRU, "sortKeys"):
-        # EO services advertise the path/schema pair; SRU adds optional flags.
-        for key in value.split():
-            fields = key.split(",")
-            identity = ",".join(fields[:2]).rstrip(",")
-            _choice(identity, tuple(option.rstrip(",") for option in options))
-    else:
-        _choice(value, options)
 
 
 def _format_interval(lower: str, upper: str, lower_closed: bool, upper_closed: bool) -> str:

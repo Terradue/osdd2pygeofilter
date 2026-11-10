@@ -41,29 +41,30 @@ URLs in document order. No requests are made during conversion.
 The module contains `OpenSearchEvaluator(Evaluator)` and these convenience APIs:
 
 ```python
-from generated_search import from_cql2_text, from_cql2_json, build_url
+from generated_search import from_cql2_text, from_cql2_json
 
 # For a template https://example.test/search?q={searchTerms}&limit={count?}
 query = from_cql2_text("searchTerms = 'ocean & ice' AND count = 10")
-assert query == "q=ocean%20%26%20ice&limit=10"
+assert query == {"q": "ocean & ice", "limit": "10"}
 query = from_cql2_json('{"op":"=","args":[{"property":"searchTerms"},"ice"]}')
-url = build_url({"q": "ocean & ice", "limit": "10"})
 ```
 
 `to_opensearch(root)` accepts an existing pygeofilter AST. Query conversion
-functions return a percent-encoded query string without a leading `?`.
-`build_url(parameters)` returns the complete invocation URL. Neither sends a
-request. All supplied parameter values are decoded strings; do not encode them
-before calling these APIs.
+functions return decoded filter parameters without making a request. They accept
+`attribute_map`, mapping application property names to placeholder QNames.
+Each evaluation is independent.
 
-Conversion functions and the evaluator constructor accept `attribute_map`,
-which maps application property names to placeholder QNames, and `defaults`,
-which maps HTTP query names to decoded values. Filter assignments override
-defaults; fixed template values cannot be changed. Defaults undergo the same
-validation as filter values. Each evaluation is independent.
+`invoke(parameters, defaults=None)` merges decoded defaults and fixed template
+parameters, validates the complete parameter set, and sends an HTTP GET using
+`requests` with a 30-second timeout. Filter assignments override defaults; fixed
+template values cannot be changed. It raises for HTTP errors and returns the
+response's decoded JSON. `invoke_from_cql2_text` and `invoke_from_cql2_json`
+combine conversion and invocation:
 
 ```python
-query = from_cql2_text(
+from generated_search import invoke_from_cql2_text
+
+response = invoke_from_cql2_text(
     "text = 'ice'",
     attribute_map={"text": "searchTerms"},
     defaults={"limit": "10"},
@@ -75,13 +76,28 @@ Quote extension property names in CQL2 text, for example
 The prefix must match the description's placeholder; its meaning is resolved
 using the XML namespace URI, including declarations scoped to a URL.
 
-The generated module requires only `pygeofilter`, `pygeoif` (also a dependency
-of pygeofilter), and `uritemplate`. It does not import `osdd2pygeofilter`, Jinja2,
+The generated module requires `pygeofilter`, `pygeoif` (also a dependency
+of pygeofilter), and `requests`. It does not import `osdd2pygeofilter`, Jinja2,
 or lxml at runtime. The generator embeds the validation definitions from its
 canonical validation source alongside the Jinja2-rendered handlers. Validation
-fixes take effect in existing modules when you regenerate them. OpenSearch QNames and optional markers are
-normalized before RFC 6570 processing; `uritemplate` expands URL query values,
-including fixed parameters, exactly once.
+fixes take effect in existing modules when you regenerate them.
+
+`PARAMETER_OPTIONS` maps HTTP query parameter names to tuples of suggested
+values, for example `{"platform": ("Sentinel-1", "Sentinel-2")}`. Option labels
+are omitted. Options alone do not restrict accepted values or imply an enum.
+
+At the end of each evaluator call, a final parameter value absent from its
+advertised tuple produces one `WARNING` log record. Listed values, absent
+parameters, and parameters without options produce no warning. Comparison uses
+the complete decoded value, including any range, set, or sort syntax.
+The value remains in the result and can be submitted by the invocation helpers.
+Patterns and standard-defined enumerations are still validated at invocation.
+
+Warnings use Python's standard `logging` module, under the generated module's
+name. Applications can configure handlers and levels normally; the generated
+module does not configure logging. Defaults supplied only to `invoke` are not
+part of evaluator option checks.
+
 
 The converter reads namespace scopes, URL offsets and constraint attributes
 directly from the lxml tree. Pass the OpenSearchDescription root element, using

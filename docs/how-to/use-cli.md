@@ -76,7 +76,7 @@ lookup and the corresponding options.
 The CLI accepts an OSDD and generates Python code. To evaluate a CQL2 filter,
 import the resulting module as shown in the
 [first evaluator walkthrough](../tutorials/first-steps.md). The module returns
-query strings; it does not execute search requests.
+parameter dictionaries. Generated invocation helpers validate them and execute HTTP GET requests.
 
 ## Troubleshooting
 
