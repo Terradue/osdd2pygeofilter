@@ -24,6 +24,14 @@ TIME = "http://a9.com/-/opensearch/extensions/time/1.0/"
 EO = "http://a9.com/-/opensearch/extensions/eo/1.0/"
 SRU = "http://a9.com/-/opensearch/extensions/sru/2.0/"
 
+BOX_COORDINATE_COUNT = 4
+LONGITUDE_LIMIT = 180
+LATITUDE_LIMIT = 90
+INTERVAL_BOUND_COUNT = 2
+PERCENTAGE_MAXIMUM = 100
+SORT_KEY_MAX_FIELDS = 5
+FACET_SORT_MAX_FIELDS = 3
+
 EO_INTEGERS = frozenset(
     {
         "wavelength",
@@ -191,10 +199,14 @@ def timestamp(value: str) -> datetime:
 
 def _box(value: str) -> None:
     coordinates = [_number(item) for item in value.split(",")]
-    if len(coordinates) != 4:
+    if len(coordinates) != BOX_COORDINATE_COUNT:
         raise ValueError("A box needs west,south,east,north")
     west, south, east, north = coordinates
-    if not (-180 <= west <= 180 and -180 <= east <= 180 and -90 <= south <= north <= 90):
+    if not (
+        -LONGITUDE_LIMIT <= west <= LONGITUDE_LIMIT
+        and -LONGITUDE_LIMIT <= east <= LONGITUDE_LIMIT
+        and -LATITUDE_LIMIT <= south <= north <= LATITUDE_LIMIT
+    ):
         raise ValueError("Invalid WGS84 bounding box")
 
 
@@ -241,7 +253,7 @@ def _range_parts(value: str) -> tuple[list[str], bool]:
         return parts, False
     if value[:1] in {"[", "]", "("} and value[-1:] in {"[", "]", ")"}:
         parts = value[1:-1].split(",")
-        if len(parts) != 2 or not any(parts):
+        if len(parts) != INTERVAL_BOUND_COUNT or not any(parts):
             raise ValueError("Expected two range bounds")
         return parts, True
     if value[:1] in {"[", "]"}:
@@ -257,7 +269,7 @@ def _eo_scalar(local: str, value: str) -> float:
     number = _number(value)
     if local in EO_INTEGERS and not re.fullmatch(r"[+-]?\d+", value):
         raise ValueError(f"Expected integer for eo:{local}")
-    if local in {"cloudCover", "snowCover"} and not 0 <= number <= 100:
+    if local in {"cloudCover", "snowCover"} and not 0 <= number <= PERCENTAGE_MAXIMUM:
         raise ValueError(f"eo:{local} must be in [0,100]")
     return number
 
@@ -271,7 +283,7 @@ def _eo(local: str, value: str) -> None:
         numbers = [_eo_scalar(local, part) for part in parts if part]
         if not numbers or (not is_range and len(numbers) != len(parts)):
             raise ValueError("Empty EO value")
-        if is_range and len(numbers) == 2 and numbers[0] > numbers[1]:
+        if is_range and len(numbers) == INTERVAL_BOUND_COUNT and numbers[0] > numbers[1]:
             raise ValueError("Reversed EO interval")
 
 
@@ -295,7 +307,7 @@ def _sort_keys(value: str) -> None:
         raise ValueError("Empty SRU sortKeys")
     for key in value.split():
         fields = key.split(",")
-        if not fields[0] or len(fields) > 5:
+        if not fields[0] or len(fields) > SORT_KEY_MAX_FIELDS:
             raise ValueError("Invalid SRU sort key")
         for flag in fields[2:4]:
             _choice(flag, ("", "0", "1", "true", "false"))
@@ -303,7 +315,7 @@ def _sort_keys(value: str) -> None:
 
 def _facet_sort(value: str) -> None:
     parts = value.split(",")
-    if len(parts) > 3:
+    if len(parts) > FACET_SORT_MAX_FIELDS:
         raise ValueError("Invalid SRU facetSort")
     for part, choices in zip(
         parts,
@@ -377,16 +389,26 @@ def _declared_core(
 ) -> None:
     if local in {"startIndex", "startPage"}:
         _integer(value, offsets[local == "startPage"])
-    if local in {"inputEncoding", "outputEncoding"}:
-        try:
-            encoding = codecs.lookup(value)
-        except LookupError as error:
-            raise ValueError(f"Unknown character encoding: {value}") from error
-        if local == "inputEncoding" and encoding.name != "utf-8":
-            raise ValueError("URL expansion supports UTF-8 inputEncoding only")
     advertised = declarations.get(local, ())
-    if advertised and "*" not in advertised:
+    if local in {"inputEncoding", "outputEncoding"}:
+        encoding = character_encoding(value)
+        if advertised and "*" not in advertised:
+            _choice(encoding, tuple(character_encoding(item) for item in advertised))
+    elif advertised and "*" not in advertised:
         _choice(value, advertised)
+
+
+def character_encoding(value: str) -> str:
+    """Resolve a text encoding to its canonical codec name.
+
+    Raises:
+        ValueError: If the name is unknown or does not identify a text encoding.
+    """
+    try:
+        "".encode(value)
+        return codecs.lookup(value).name
+    except LookupError as error:
+        raise ValueError(f"Unknown character encoding: {value}") from error
 
 
 def intersect_ranges(binding: Binding, left: str, right: str) -> str:

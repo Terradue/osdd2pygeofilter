@@ -6,13 +6,14 @@ Only JSON results URLs are eligible. Compilation does not contact the service.
 from __future__ import annotations
 
 import ast
+import json
 import re
+from functools import partial
 from importlib.resources import files
 from typing import TYPE_CHECKING
 from urllib.parse import parse_qsl, urlsplit
 
 from jinja2 import Environment, PackageLoader, StrictUndefined, select_autoescape
-from uritemplate import URITemplate
 
 from osdd2pygeofilter.validation import CORE, PARAMETERS, Binding
 
@@ -32,10 +33,19 @@ def _select_url(root: _Element, index: int) -> _Element:
     ]
     if index < 0 or index >= len(candidates):
         raise ValueError("No application/json results URL at the requested url_index")
-    selected = candidates[index]
-    if selected.get("method", "GET").upper() != "GET":
-        raise ValueError("Only GET URL templates are supported")
-    return selected
+    return candidates[index]
+
+
+def _http_method(element: _Element) -> str:
+    """Read the declared HTTP method, defaulting to GET.
+
+    Raises:
+        ValueError: If the method is not a valid HTTP token.
+    """
+    method = element.get("method", element.get(f"{{{PARAMETERS}}}method", "GET")).upper()
+    if not re.fullmatch(r"[!#$%&'*+.^_`|~0-9A-Z-]+", method):
+        raise ValueError("Invalid HTTP method")
+    return method
 
 
 def _qualified_name(name: str, element: _Element) -> tuple[str, str]:
@@ -93,37 +103,74 @@ def _binding(query: str, token: str, element: _Element) -> Binding:
     return binding
 
 
-def _compile_url(element: _Element) -> tuple[str, tuple[Binding, ...], dict[str, str]]:
-    template = element.get("template", "")
-    # OpenSearch QNames and '?' modifiers are not RFC 6570 variable syntax.
-    # Normalize placeholders before letting uritemplate parse/expand the URL.
-    normalized = re.sub(r"\{[^{}]*\}", "{value}", template)
-    parsed = urlsplit(URITemplate(normalized).uri)
-    if parsed.scheme not in {"http", "https"} or not parsed.netloc or parsed.fragment:
-        raise ValueError("Expected an absolute HTTP(S) template without a fragment")
-    if "{" in parsed.path or "{" in parsed.netloc:
-        raise ValueError("Only query string placeholders are supported")
-    query_text = template.split("?", 1)[1] if "?" in template else ""
-    bindings: list[Binding] = []
+def _template_tokens(template: str) -> tuple[str, dict[str, str]]:
+    """Mask placeholders only for URL inspection, retaining their exact spelling."""
+    tokens: dict[str, str] = {}
+
+    def mask(match: re.Match[str]) -> str:
+        marker = f"OSDDPLACEHOLDER{len(tokens)}TOKEN"
+        while marker in template:
+            marker += "X"
+        tokens[marker] = match[0]
+        return marker
+
+    masked = re.sub(r"\{[^{}]*\}", mask, template)
+    if "{" in masked or "}" in masked:
+        raise ValueError("Malformed URL template placeholder")
+    return masked, tokens
+
+
+def _query_metadata(query: str, tokens: dict[str, str]) -> tuple[dict[str, str], dict[str, str]]:
+    """Infer unambiguous whole-value query aliases and retain fixed-value guards."""
+    pairs = parse_qsl(query, keep_blank_values=True)
+    aliases: dict[str, str] = {}
     fixed: dict[str, str] = {}
-    seen: set[str] = set()
-    for query, value in parse_qsl(query_text, keep_blank_values=True):
-        if not query or query in seen or "{" in query:
-            raise ValueError(f"Invalid or duplicate query parameter: {query}")
-        seen.add(query)
-        if "{" in value or "}" in value:
-            bindings.append(_binding(query, value, element))
-        else:
-            fixed[query] = value
-    _validate_bindings(bindings, element)
-    names = [binding.query for binding in bindings] + list(fixed)
-    # RFC 6570 variable names encode punctuation in arbitrary query names.
-    if any(not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.-]*", name) for name in names):
-        raise ValueError("Query names must be RFC 6570 simple variable names")
-    # uri = parsed._replace(query="").geturl() + ("{?" + ",".join(names) + "}" if names else "")
-    # URITemplate(uri)
-    uri = parsed._replace(query="").geturl()
-    return uri, tuple(bindings), fixed
+    for name, value in pairs:
+        if not name or any(marker in name for marker in tokens):
+            continue
+        if value in tokens and sum(key == name for key, _ in pairs) == 1:
+            property_name = tokens[value][1:-1].removesuffix("?")
+            aliases.setdefault(property_name, name)
+        elif not any(marker in value for marker in tokens):
+            fixed.setdefault(name, value)
+    return aliases, fixed
+
+
+def _template_binding(token: str, aliases: dict[str, str], element: _Element) -> Binding:
+    property_name = token[1:-1].removesuffix("?")
+    declarations = [
+        parameter.get("name", "")
+        for parameter in element.findall(f"{{{PARAMETERS}}}Parameter")
+        if parameter.get("value", "").replace("?}", "}") == token.replace("?}", "}")
+    ]
+    if len(declarations) > 1:
+        raise ValueError(f"Ambiguous Parameter declarations for {property_name}")
+    query = declarations[0] if declarations else aliases.get(property_name, property_name)
+    if not query:
+        raise ValueError("Parameter names must not be empty")
+    return _binding(query, token, element)
+
+
+def _compile_url(element: _Element) -> tuple[str, tuple[Binding, ...], dict[str, str]]:
+    """Compile parameter metadata while preserving the input template verbatim."""
+    template = element.get("template", "")
+    masked, tokens = _template_tokens(template)
+    parsed = urlsplit(masked)
+    dynamic_scheme = any(marker.lower() in parsed.scheme for marker in tokens)
+    if (parsed.scheme not in {"http", "https"} and not dynamic_scheme) or not parsed.netloc:
+        raise ValueError("Expected an absolute HTTP(S) URL template")
+    aliases, fixed = _query_metadata(parsed.query, tokens)
+    bindings: dict[str, Binding] = {}
+    for token in tokens.values():
+        binding = _template_binding(token, aliases, element)
+        previous = bindings.get(binding.property)
+        if previous is None or binding.required:
+            bindings[binding.property] = binding
+    _validate_bindings(tuple(bindings.values()), element)
+    names = [binding.query for binding in bindings.values()]
+    if len(set(names)) != len(names) or set(names) & fixed.keys():
+        raise ValueError("Ambiguous template parameter names")
+    return template, tuple(bindings.values()), fixed
 
 
 def _validate_bindings(bindings: Sequence[Binding], element: _Element) -> None:
@@ -144,15 +191,13 @@ def _validation_source() -> str:
     """
     source = files("osdd2pygeofilter").joinpath("validation.py").read_text(encoding="utf-8")
     lines = source.splitlines(keepends=True)
-    definitions: list[str] = []
     for node in ast.parse(source).body:
-        if not isinstance(node, (ast.Assign, ast.AnnAssign, ast.ClassDef, ast.FunctionDef)):
-            continue
-        start = node.lineno
-        if isinstance(node, (ast.ClassDef, ast.FunctionDef)) and node.decorator_list:
-            start = node.decorator_list[0].lineno
-        definitions.append("".join(lines[start - 1 : node.end_lineno]).rstrip())
-    return "\n\n\n".join(definitions)
+        if isinstance(node, (ast.Assign, ast.AnnAssign, ast.ClassDef, ast.FunctionDef)):
+            start = node.lineno
+            if isinstance(node, (ast.ClassDef, ast.FunctionDef)) and node.decorator_list:
+                start = node.decorator_list[0].lineno
+            return "".join(lines[start - 1 :]).rstrip()
+    raise ValueError("Validation source has no definitions")
 
 
 def render_evaluator(service: _Element, *, url_index: int = 0) -> str:
@@ -183,11 +228,14 @@ def render_evaluator(service: _Element, *, url_index: int = 0) -> str:
         undefined=StrictUndefined,
         autoescape=select_autoescape(),
         keep_trailing_newline=True,
+        trim_blocks=True,
+        lstrip_blocks=True,
     )
-    environment.filters["python"] = repr
+    environment.filters["python"] = partial(json.dumps, ensure_ascii=False)
     return environment.get_template("evaluator.py.j2").render(
         validation_source=_validation_source(),
         uri=uri,
+        method=_http_method(element),
         bindings=bindings,
         fixed=fixed,
         parameter_options={
@@ -207,8 +255,8 @@ def convert(service: _Element, target: Path, *, url_index: int = 0) -> Path:
     """Write a generated evaluator, creating parents and replacing the target.
 
     Validation and rendering finish before the target is opened. The generated
-    module embeds its validators and requires pygeofilter, pygeoif, and requests
-    at runtime, without importing osdd2pygeofilter.
+    module embeds its validators and requires pygeofilter, pygeoif, requests,
+    and uritemplate at runtime, without importing osdd2pygeofilter.
 
     Args:
         service: Parsed lxml OpenSearchDescription root element.

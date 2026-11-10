@@ -54,9 +54,10 @@ functions return decoded filter parameters without making a request. They accept
 `attribute_map`, mapping application property names to placeholder QNames.
 Each evaluation is independent.
 
-`invoke(parameters, defaults=None)` merges decoded defaults and fixed template
-parameters, validates the complete parameter set, and sends an HTTP GET using
-`requests` with a 30-second timeout. Filter assignments override defaults; fixed
+`invoke(parameters, defaults=None)` merges decoded defaults with supplied
+parameters and validates them. It expands the original `URL_TEMPLATE` in place
+and passes the resulting URL to `requests.request(METHOD, url, timeout=30)` with a 30-second timeout, without
+a separate `params` argument. Filter assignments override defaults; fixed
 template values cannot be changed. It raises for HTTP errors and returns the
 response's decoded JSON. `invoke_from_cql2_text` and `invoke_from_cql2_json`
 combine conversion and invocation:
@@ -71,13 +72,47 @@ response = invoke_from_cql2_text(
 )
 ```
 
+`URL_TEMPLATE` preserves the selected OSDD `Url/@template` exactly as read from
+XML. Each `{name}` or `{prefix:name?}` occurrence is replaced with its
+percent-encoded value. Optional values that are absent become empty strings;
+required values must be supplied. Literal paths, separators, fixed query values,
+existing escapes, repeated keys, and fragments are preserved during expansion.
+The HTTP client may subsequently normalize the URL for transport and does not
+send fragment identifiers to the server.
+
+Whole query-value placeholders retain their query-name aliases (`q={searchTerms}`
+uses `q` in the parameter dictionary). A matching Parameter declaration's `name`
+takes precedence. For path, composite, or ambiguous repeated query bindings,
+the placeholder QName is the default dictionary key. For example,
+`/catalog/{eo:platform}/search/{searchTerms}` accepts `eo:platform` and
+`searchTerms`, unless Parameter declarations give them other names. Repeated
+occurrences of a placeholder share a value; any required occurrence makes the
+value required. These are OpenSearch placeholders, not RFC 6570 expressions
+such as `{?q,count}`. At invocation, a small adapter maps OpenSearch
+placeholders to temporary RFC 6570 variable names. `URITemplate` performs the
+actual expansion and UTF-8 percent encoding; other input encodings use
+`urllib.parse.quote` before reserved expansion to preserve encoded escapes.
+`URL_TEMPLATE` itself stays unchanged.
+
+`METHOD` comes from the selected URL’s `method` or Parameters-extension
+`p:method` attribute and defaults to `GET`. Invocation sends the expanded URL
+with that method; it does not construct a request body.
+
+Input and output encodings use the explicit parameter value, then the first
+concrete `InputEncoding` or `OutputEncoding` declaration, then UTF-8. Encoding
+placeholders are populated with this selection when omitted. Codec aliases are
+accepted when they match an advertised encoding. Input encoding controls URL
+value percent encoding; output encoding controls JSON response decoding unless
+the response declares an HTTP charset, which takes precedence. Unknown codecs
+and input characters that cannot be encoded fail before a request is sent.
+
 Quote extension property names in CQL2 text, for example
 `"eo:cloudCover" < 20`. Use `attribute_map` to expose names such as `cloud_cover`.
 The prefix must match the description's placeholder; its meaning is resolved
 using the XML namespace URI, including declarations scoped to a URL.
 
 The generated module requires `pygeofilter`, `pygeoif` (also a dependency
-of pygeofilter), and `requests`. It does not import `osdd2pygeofilter`, Jinja2,
+of pygeofilter), `requests`, and `uritemplate`. It does not import `osdd2pygeofilter`, Jinja2,
 or lxml at runtime. The generator embeds the validation definitions from its
 canonical validation source alongside the Jinja2-rendered handlers. Validation
 fixes take effect in existing modules when you regenerate them.
@@ -86,11 +121,15 @@ fixes take effect in existing modules when you regenerate them.
 values, for example `{"platform": ("Sentinel-1", "Sentinel-2")}`. Option labels
 are omitted. Options alone do not restrict accepted values or imply an enum.
 
-At the end of each evaluator call, a final parameter value absent from its
-advertised tuple produces one `WARNING` log record. Listed values, absent
+Whenever a handler assigns a parameter value absent from its advertised tuple,
+it immediately emits a `WARNING` log record. Listed values, absent
 parameters, and parameters without options produce no warning. Comparison uses
 the complete decoded value, including any range, set, or sort syntax.
-The value remains in the result and can be submitted by the invocation helpers.
+Repeated assignments are checked separately. Computed interval intersections
+and spatial relation assignments are also checked; copying already checked
+values while merging predicates does not add warnings. Warnings can therefore
+be emitted even when a later part of the expression fails. The value remains
+unchanged and can be submitted by the invocation helpers.
 Patterns and standard-defined enumerations are still validated at invocation.
 
 Warnings use Python's standard `logging` module, under the generated module's
@@ -111,3 +150,28 @@ values, missing required parameters and conflicting assignments raise
 `ValueError`.
 
 ::: osdd2pygeofilter.converter
+
+## Generated source quality
+
+Generated modules are formatted for the project's 100-column Ruff configuration
+and checked with its strict mypy and Bandit settings. Run
+`hatch run dev:generated-check` to verify representative outputs, including
+empty bindings, empty metadata maps, and escaped option values. This check is
+included in the development quality and check commands.
+
+The emitted source has typed parameter metadata and a recursive `JSONValue`
+alias for decoded JSON responses (objects, arrays, scalars, or null). The alias
+expresses JSON syntax, not a service-specific response schema. Invocation
+validates values returned across the HTTP client's untyped JSON boundary.
+
+Pygeofilter 0.4.0 does not ship a `py.typed` marker. The template documents narrow
+`import-untyped` exceptions for its imports and a `misc` exception for inheriting
+its untyped evaluator. A typed handler-registration adapter preserves method
+signatures; evaluator results are checked before exposing parameter dictionaries.
+`@_handle` calls the original `handle` decorator to register each function, then
+returns that same function with its generic callable type preserved. The leading
+underscore marks this as an internal helper; it does not change dispatch behavior.
+Using the untyped upstream decorator directly would erase handler signatures
+and trigger strict mypy's `untyped-decorator` errors.
+No host-wide mypy override is needed. Revisit these dependency exceptions when
+upgrading to a pygeofilter release that publishes typing metadata.

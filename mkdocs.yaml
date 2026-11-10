@@ -24,17 +24,21 @@ site_dir: site
 
 nav:
   - Home: index.md
-  - Install: how-to/install.md
-  - First evaluator: tutorials/first-steps.md
-  - Use the CLI: how-to/use-cli.md
-  - CLI reference: reference/cli.md
-  - Supported queries: explanation/architecture.md
-  - Advanced:
+  - Tutorials:
+      - Overview: tutorials/index.md
+      - First evaluator: tutorials/first-steps.md
+      - EUMETSAT product search: tutorials/eumetsat.md
+  - How-to guides:
+      - Overview: how-to/index.md
+      - Install: how-to/install.md
+      - Use the CLI: how-to/use-cli.md
+  - Reference:
+      - Overview: reference/index.md
+      - CLI: reference/cli.md
       - Python API: reference/api.md
-      - Tutorials: tutorials/index.md
-      - How-to guides: how-to/index.md
-      - Reference: reference/index.md
-      - Explanation: explanation/index.md
+  - Explanation:
+      - Overview: explanation/index.md
+      - Supported queries and limitations: explanation/architecture.md
 
 theme:
   name: readthedocs

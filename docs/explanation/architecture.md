@@ -18,7 +18,7 @@ limitations under the License.
 
 The generator compiles a JSON results URL from an lxml OpenSearchDescription root element.
 Jinja2 emits a pygeofilter evaluator with embedded validation definitions;
-`invoke` sends decoded parameters through `requests`. The generated module runs without the
+`invoke` expands the original OpenSearch URL template and sends that URL through `requests`. The generated module runs without the
 `osdd2pygeofilter` package, Jinja2, or lxml. Regenerate it to pick up changes
 to validation rules.
 Only advertised placeholders are exposed as properties. Query names may differ
@@ -67,12 +67,18 @@ validation. String parameters without standard enums or advertised constraints
 remain unrestricted. Unknown extension namespaces do not inherit another
 extension's semantics merely because their prefix or local name matches.
 
-The adapter accepts UTF-8 input encoding declarations. Required placeholders need nonempty values.
-Optional placeholders are omitted when absent. No service defaults are invented.
+The adapter supports declared input and output text encodings, defaulting to UTF-8.
+Explicit encoding parameters override declaration defaults; an HTTP response charset
+overrides the output-decoding fallback. Required placeholders need nonempty values.
+Missing optional placeholders are replaced with empty strings; surrounding URL text remains intact. No service defaults are invented.
 
-Only GET templates with whole query-value placeholders are supported. Composite
-or path placeholders, fragments, duplicate query names, unsupported occurrence
-counts, and invalid parameter bindings fail during generation. Multiple JSON
+URL templates may contain path, authority, fragment, query-name, and composite
+query-value placeholders. The original template is preserved, including repeated
+query keys and fixed literals. Replacement values are percent-encoded once;
+existing literal escapes are not decoded and re-encoded. Missing required values,
+malformed placeholders, ambiguous parameter aliases, unsupported occurrence
+counts, and invalid parameter bindings are rejected. Expansion must produce an
+absolute HTTP(S) URL before a request is sent. Multiple JSON
 results URLs can be selected using `url_index`. Unknown foreign annotations are
 retained as metadata but do not trigger network requests or dynamic code.
 
@@ -81,8 +87,9 @@ retained as metadata but do not trigger network requests or dynamic code.
 Parameter `Option` elements suggest values; they do not establish an exhaustive
 enumeration. The generator preserves their submitted values as tuples
 in `PARAMETER_OPTIONS`, keyed by HTTP parameter name, and omits labels, without changing the underlying parameter type.
-Evaluation logs a `WARNING` for each final value missing from its advertised
-options tuple, without rejecting or changing it. Listed values and absent
+Handlers log a `WARNING` immediately for each assigned value missing from its
+advertised options tuple, without rejecting or changing it. Repeated assignments
+and computed values are checked independently, before evaluation completes. Listed values and absent
 parameters are silent. A `pattern` alongside options is enforced at invocation,
 even for an advertised value. Unlisted values remain valid when they satisfy
 the parameter's other constraints.

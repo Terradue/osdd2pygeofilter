@@ -9,40 +9,145 @@ import codecs
 import logging
 import math
 import re
-import requests
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
+from email.message import Message
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, TypeAlias, TypeVar
+from urllib.parse import quote, urlsplit
 
-from pygeofilter import ast, values
-from pygeofilter.backends.evaluator import Evaluator, handle
-from pygeofilter.parsers.cql2_json import parse as parse_json
-from pygeofilter.parsers.cql2_text import parse as parse_text
+import requests
+
+# pygeofilter 0.4 has no py.typed marker or published stubs. Keep this
+# dependency boundary explicit; generated functions validate its results.
+from pygeofilter import ast, values  # type: ignore[import-untyped]
+from pygeofilter.backends.evaluator import Evaluator, handle  # type: ignore[import-untyped]
+from pygeofilter.parsers.cql2_json import parse as parse_json  # type: ignore[import-untyped]
+from pygeofilter.parsers.cql2_text import parse as parse_text  # type: ignore[import-untyped]
 from pygeoif.factories import shape
+from uritemplate import URITemplate
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Callable, Mapping
+    from typing import TypeGuard
 
 {{ validation_source }}
 
 
-BINDINGS = (
-{% for binding in bindings %}    Binding(
+{% if bindings %}
+BINDINGS: tuple[Binding, ...] = (
+{% for binding in bindings %}
+    Binding(
         property={{ binding.property | python }},
         query={{ binding.query | python }},
         namespace={{ binding.namespace | python }},
         local={{ binding.local | python }},
-        required={{ binding.required | python }},
-        constraints={{ binding.constraints | python }},
+        required={{ binding.required }},
+{% if binding.constraints %}
+        constraints=(
+{% for key, value in binding.constraints %}
+            (
+                {{ key | python }},
+                {{ value | python }},
+            ),
+{% endfor %}
+        ),
+{% else %}
+        constraints=(),
+{% endif %}
     ),
-{% endfor %})
+{% endfor %}
+)
+{% else %}
+BINDINGS: tuple[Binding, ...] = ()
+{% endif %}
 # Suggested values keyed by HTTP query parameter name; not closed enums.
-PARAMETER_OPTIONS = MappingProxyType({{ parameter_options | python }})
-FIXED = MappingProxyType({{ fixed | python }})
-DECLARATIONS = MappingProxyType({{ declarations | python }})
+{% if parameter_options %}
+PARAMETER_OPTIONS: Mapping[str, tuple[str, ...]] = MappingProxyType(
+    {
+{% for parameter, options in parameter_options.items() %}
+        {{ parameter | python }}: (
+{% for option in options %}
+            {{ option | python }},
+{% endfor %}
+        ),
+{% endfor %}
+    }
+)
+{% else %}
+PARAMETER_OPTIONS: Mapping[str, tuple[str, ...]] = MappingProxyType({})
+{% endif %}
+{% if fixed %}
+FIXED: Mapping[str, str] = MappingProxyType(
+    {
+{% for key, value in fixed.items() %}
+        {{ key | python }}: {{ value | python }},
+{% endfor %}
+    }
+)
+{% else %}
+FIXED: Mapping[str, str] = MappingProxyType({})
+{% endif %}
+DECLARATIONS: Mapping[str, tuple[str, ...]] = MappingProxyType(
+    {
+{% for key, options in declarations.items() %}
+{% if options %}
+        {{ key | python }}: (
+{% for option in options %}
+            {{ option | python }},
+{% endfor %}
+        ),
+{% else %}
+        {{ key | python }}: (),
+{% endif %}
+{% endfor %}
+    }
+)
 OFFSETS = ({{ index_offset }}, {{ page_offset }})
 URL_TEMPLATE = {{ uri | python }}
+METHOD = {{ method | python }}
+
+# Generic JSON values, not a service-specific response schema.
+JSONValue: TypeAlias = "bool | int | float | str | list[JSONValue] | dict[str, JSONValue] | None"
+_Handler = TypeVar("_Handler", bound="Callable[..., object]")
+
+
+def _handle(*node_types: type[object]) -> Callable[[_Handler], _Handler]:
+    """Register a pygeofilter handler while preserving its callable signature."""
+
+    def register(handler: _Handler) -> _Handler:
+        # Upstream handle attaches dispatch metadata in place and returns handler.
+        handle(*node_types)(handler)
+        return handler
+
+    return register
+
+
+def _parameters(result: object) -> dict[str, str]:
+    """Check the untyped evaluator boundary before exposing query parameters.
+
+    Raises:
+        NotImplementedError: If evaluation did not produce string parameters.
+    """
+    if not isinstance(result, dict):
+        raise NotImplementedError("Expected a CQL2 predicate")
+    parameters: dict[str, str] = {}
+    for key, value in result.items():
+        if not isinstance(key, str) or not isinstance(value, str):
+            raise NotImplementedError("Expected string query parameters")
+        parameters[key] = value
+    return parameters
+
+
+def _is_json_value(value: object) -> TypeGuard[JSONValue]:
+    """Check decoded response types without copying potentially large payloads."""
+    if value is None or isinstance(value, (str, bool, int, float)):
+        return True
+    if isinstance(value, list):
+        return all(_is_json_value(item) for item in value)
+    if isinstance(value, dict):
+        return all(isinstance(key, str) and _is_json_value(item) for key, item in value.items())
+    return False
 
 
 def _scalar(value: object) -> str:
@@ -55,7 +160,26 @@ def _scalar(value: object) -> str:
     raise NotImplementedError("Expected a scalar literal")
 
 
-class OpenSearchEvaluator(Evaluator):
+def _assignment(binding: Binding, value: str) -> dict[str, str]:
+    """Create a parameter assignment, warning immediately for unlisted values.
+
+    Options are suggestions, so the assigned value remains unchanged. Each
+    handler assignment is checked independently, including repeated values.
+    """
+    options = PARAMETER_OPTIONS.get(binding.query)
+    if options and value not in options:
+        logging.getLogger(__name__).warning(
+            "Parameter %s has value %r outside advertised options %r; "
+            "accepting it because options are suggestions",
+            binding.query,
+            value,
+            options,
+        )
+    return {binding.query: value}
+
+
+# The upstream base class is untyped; handlers below retain their signatures.
+class OpenSearchEvaluator(Evaluator):  # type: ignore[misc]
     """Translate representable CQL2 predicates into decoded query parameters.
 
     Unsupported operations raise NotImplementedError. Each evaluation is
@@ -63,12 +187,13 @@ class OpenSearchEvaluator(Evaluator):
     """
 
     def __init__(
-        self, attribute_map: Mapping[str, str] | None = None,
+        self,
+        attribute_map: Mapping[str, str] | None = None,
     ) -> None:
         """Configure aliases for CQL2 property names."""
         self.attribute_map = dict(attribute_map or {})
 
-    @handle(ast.Attribute)
+    @_handle(ast.Attribute)
     def attribute(self, node: ast.Attribute) -> Binding:
         """Resolve a CQL2 property to its advertised parameter binding."""
         name = self.attribute_map.get(node.name, node.name)
@@ -77,32 +202,36 @@ class OpenSearchEvaluator(Evaluator):
                 return binding
         raise ValueError(f"Unknown OpenSearch property: {name}")
 
-    @handle(str, int, float, bool, date, datetime)
+    @_handle(str, int, float, bool, date, datetime)
     def literal(self, node: object) -> str:
         """Serialize a scalar without URL encoding it."""
         return _scalar(node)
 
-    @handle(ast.Equal)
+    @_handle(ast.Equal)
     def equal(self, node: ast.Equal, lhs: object, rhs: object) -> dict[str, str]:
         """Assign a literal to a parameter, including reversed equality."""
         if isinstance(rhs, Binding):
             lhs, rhs = rhs, lhs
         if not isinstance(lhs, Binding) or not isinstance(rhs, str):
             raise NotImplementedError("Equality needs one property and one scalar")
-        return {lhs.query: rhs}
+        return _assignment(lhs, rhs)
 
-    @handle(ast.And)
+    @_handle(ast.And)
     def conjunction(
-        self, node: ast.And, lhs: dict[str, str], rhs: dict[str, str],
+        self,
+        node: ast.And,
+        lhs: dict[str, str],
+        rhs: dict[str, str],
     ) -> dict[str, str]:
         """Combine assignments without discarding conflicting predicates."""
         result = dict(lhs)
         for key, value in rhs.items():
-            combined = value
             if key in result and result[key] != value:
                 binding = next(binding for binding in BINDINGS if binding.query == key)
                 combined = intersect_ranges(binding, result[key], value)
-            result[key] = combined
+                result.update(_assignment(binding, combined))
+            else:
+                result[key] = value
         return result
 
     def _range_binding(self, value: object) -> Binding:
@@ -112,7 +241,7 @@ class OpenSearchEvaluator(Evaluator):
             raise NotImplementedError("Ranges require an EO numeric or date parameter")
         return value
 
-    @handle(ast.LessThan, ast.LessEqual, ast.GreaterThan, ast.GreaterEqual)
+    @_handle(ast.LessThan, ast.LessEqual, ast.GreaterThan, ast.GreaterEqual)
     def comparison(self, node: ast.Comparison, lhs: object, rhs: object) -> dict[str, str]:
         """Translate ordered comparisons into EO open intervals."""
         operator = node.op.value
@@ -122,101 +251,154 @@ class OpenSearchEvaluator(Evaluator):
         binding = self._range_binding(lhs)
         value = _scalar(rhs)
         expression = {
-            "<": f"{value}[", "<=": f"{value}]",
-            ">": f"]{value}", ">=": f"[{value}",
+            "<": f"{value}[",
+            "<=": f"{value}]",
+            ">": f"]{value}",
+            ">=": f"[{value}",
         }[operator]
-        return {binding.query: expression}
+        return _assignment(binding, expression)
 
-    @handle(ast.Between)
+    @_handle(ast.Between)
     def between(
-        self, node: ast.Between, lhs: object, low: object, high: object,
+        self,
+        node: ast.Between,
+        lhs: object,
+        low: object,
+        high: object,
     ) -> dict[str, str]:
         """Translate non-negated EO ranges with inclusive bounds."""
         if node.not_:
             raise NotImplementedError("NOT BETWEEN is not representable")
         binding = self._range_binding(lhs)
-        return {binding.query: f"[{_scalar(low)},{_scalar(high)}]"}
+        return _assignment(binding, f"[{_scalar(low)},{_scalar(high)}]")
 
-    @handle(ast.In)
+    @_handle(ast.In)
     def in_list(self, node: ast.In, lhs: object, *members: object) -> dict[str, str]:
         """Translate non-negated EO numeric/date membership into set syntax."""
         if node.not_:
             raise NotImplementedError("NOT IN is not representable")
         binding = self._range_binding(lhs)
-        return {binding.query: "{" + ",".join(_scalar(item) for item in members) + "}"}
+        return _assignment(binding, "{" + ",".join(_scalar(item) for item in members) + "}")
 
-    @handle(values.Geometry, values.Envelope)
+    @_handle(values.Geometry, values.Envelope)
     def geometry(self, node: values.Geometry | values.Envelope) -> str:
         """Serialize the exact geometry as WKT without envelope approximation."""
         return shape(node).wkt
 
-    @handle(ast.GeometryIntersects)
+    @_handle(ast.GeometryIntersects)
     def intersects(
-        self, node: ast.GeometryIntersects, lhs: object, rhs: object,
+        self,
+        node: ast.GeometryIntersects,
+        lhs: object,
+        rhs: object,
     ) -> dict[str, str]:
         """Map intersection to an advertised geo:geometry parameter."""
         if isinstance(rhs, Binding):
             lhs, rhs = rhs, lhs
         if not isinstance(lhs, Binding) or (lhs.namespace, lhs.local) != (GEO, "geometry"):
             raise NotImplementedError("Intersection requires a geo:geometry property")
-        result = {lhs.query: _scalar(rhs)}
+        result = _assignment(lhs, _scalar(rhs))
         for binding in BINDINGS:
             if (binding.namespace, binding.local) == (GEO, "relation"):
-                result[binding.query] = "intersects"
-        return result
-
-    def adopt_result(self, result: object) -> dict[str, str]:
-        """Log unadvertised option values without rejecting them.
-
-        Warnings use the generated module's standard-library logger and are
-        emitted once per final parameter assignment in each evaluation.
-
-        Raises:
-            NotImplementedError: If the expression is not a CQL2 predicate.
-        """
-        if not isinstance(result, dict):
-            raise NotImplementedError("Expected a CQL2 predicate")
-        for parameter, value in result.items():
-            options = PARAMETER_OPTIONS.get(parameter)
-            if options and value not in options:
-                logging.getLogger(__name__).warning(
-                    "Parameter %s has value %r outside advertised options %r; "
-                    "accepting it because options are suggestions",
-                    parameter, value, options,
-                )
+                result.update(_assignment(binding, "intersects"))
         return result
 
 
 def to_opensearch(
-    root: ast.AstType, *, attribute_map: Mapping[str, str] | None = None,
+    root: ast.AstType,
+    *,
+    attribute_map: Mapping[str, str] | None = None,
 ) -> dict[str, str]:
     """Convert a pygeofilter AST to decoded query parameters."""
-    return OpenSearchEvaluator(attribute_map).evaluate(root)
+    return _parameters(OpenSearchEvaluator(attribute_map).evaluate(root))
 
 
 def from_cql2_text(
-    expression: str, *, attribute_map: Mapping[str, str] | None = None,
+    expression: str,
+    *,
+    attribute_map: Mapping[str, str] | None = None,
 ) -> dict[str, str]:
     """Parse CQL2 text and return decoded OpenSearch parameters."""
     return to_opensearch(parse_text(expression), attribute_map=attribute_map)
 
 
 def from_cql2_json(
-    expression: str | dict, *, attribute_map: Mapping[str, str] | None = None,
+    expression: str | dict[str, JSONValue],
+    *,
+    attribute_map: Mapping[str, str] | None = None,
 ) -> dict[str, str]:
     """Parse CQL2 JSON and return decoded OpenSearch parameters."""
     return to_opensearch(parse_json(expression), attribute_map=attribute_map)
 
 
+def _expand_url(parameters: Mapping[str, str], encoding: str = "utf-8") -> str:
+    """Substitute decoded values into the original OpenSearch URL template.
+
+    Missing optional values become empty strings. Literal URL text, including
+    separators and existing escapes, remains unchanged. A temporary syntax
+    adapter maps OpenSearch placeholders to RFC 6570 variables; URITemplate
+    performs expansion without modifying URL_TEMPLATE. Non-UTF-8 values are
+    percent-encoded before expansion to preserve the selected character set.
+
+    Raises:
+        ValueError: If expansion does not produce an absolute HTTP(S) URL.
+    """
+    replacements = {binding.property: parameters.get(binding.query, "") for binding in BINDINGS}
+    variables: dict[str, str] = {}
+
+    def adapt_placeholder(match: re.Match[str]) -> str:
+        # OpenSearch QNames and optional suffixes are not RFC 6570 variables.
+        name = f"value{len(variables)}"
+        value = replacements[match[1].removesuffix("?")]
+        if encoding == "utf-8":
+            variables[name] = value
+            return "{" + name + "}"
+        # URITemplate encodes strings as UTF-8. Reserved expansion preserves
+        # values already percent-encoded with the advertised character set.
+        variables[name] = quote(value, safe="", encoding=encoding)
+        return "{+" + name + "}"
+
+    template = re.sub(r"\{([^{}]+)\}", adapt_placeholder, URL_TEMPLATE)
+    url = URITemplate(template).expand(None, **variables)
+    parsed = urlsplit(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise ValueError("Expanded template must be an absolute HTTP(S) URL")
+    return url
+
+
+def _select_encoding(parameters: dict[str, str], local: str) -> str:
+    """Select an explicit encoding, the first declaration, or UTF-8.
+
+    Populate the corresponding placeholder when it has no supplied value.
+    """
+    binding = next(
+        (item for item in BINDINGS if (item.namespace, item.local) == (CORE, local)), None
+    )
+    declared = DECLARATIONS.get(local, ())
+    fallback = next((value for value in declared if value != "*"), "UTF-8")
+    selected = parameters.get(binding.query, fallback) if binding is not None else fallback
+    encoding = character_encoding(selected)
+    if binding is not None:
+        parameters.setdefault(binding.query, selected)
+    return encoding
+
+
+def _set_response_encoding(response: requests.Response, fallback: str) -> None:
+    """Apply the output encoding unless the HTTP response declares a charset."""
+    headers = Message()
+    headers["Content-Type"] = response.headers.get("Content-Type", "")
+    response.encoding = headers.get_content_charset() or fallback
+
+
 def invoke(
     result: dict[str, str],
     defaults: Mapping[str, str] | None = None,
-) -> dict[str, Any]:
-    """Merge defaults and fixed parameters, then validate decoded values.
+) -> JSONValue:
+    """Validate parameters, invoke the declared HTTP method, and decode JSON.
 
     Raises:
-        NotImplementedError: If the result is not a parameter mapping.
-        ValueError: If parameters are unknown, fixed, missing, or invalid.
+        ValueError: If parameters or the JSON response are invalid.
+        requests.HTTPError: If the service returns an unsuccessful status.
     """
     defaults = dict(defaults or {})
     supplied = {**defaults, **result}
@@ -226,26 +408,38 @@ def invoke(
             raise ValueError(f"Cannot override fixed parameter: {key}")
         if key not in allowed and key not in FIXED:
             raise ValueError(f"Unknown query parameter: {key}")
+    input_encoding = _select_encoding(supplied, "inputEncoding")
+    output_encoding = _select_encoding(supplied, "outputEncoding")
     validate_parameters(BINDINGS, supplied, DECLARATIONS, OFFSETS)
 
-    response = requests.get(
-        URL_TEMPLATE,
-        params={**supplied, **FIXED},
+    response = requests.request(
+        METHOD,
+        _expand_url(supplied, input_encoding),
         timeout=30,
     )
     response.raise_for_status()
-    return response.json()
+    _set_response_encoding(response, output_encoding)
+    payload: object = response.json()
+    if not _is_json_value(payload):
+        raise ValueError("Expected a JSON response value")
+    return payload
 
 
 def invoke_from_cql2_text(
-    expression: str, *, attribute_map: Mapping[str, str] | None = None,
+    expression: str,
+    *,
+    attribute_map: Mapping[str, str] | None = None,
     defaults: Mapping[str, str] | None = None,
-) -> dict[str, Any]:
+) -> JSONValue:
+    """Convert CQL2 text and invoke the service with validated parameters."""
     return invoke(from_cql2_text(expression, attribute_map=attribute_map), defaults=defaults)
 
 
 def invoke_from_cql2_json(
-    expression: str | dict, *, attribute_map: Mapping[str, str] | None = None,
+    expression: str | dict[str, JSONValue],
+    *,
+    attribute_map: Mapping[str, str] | None = None,
     defaults: Mapping[str, str] | None = None,
-) -> dict[str, Any]:
+) -> JSONValue:
+    """Convert CQL2 JSON and invoke the service with validated parameters."""
     return invoke(from_cql2_json(expression, attribute_map=attribute_map), defaults=defaults)

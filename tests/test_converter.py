@@ -10,6 +10,7 @@ from unittest.mock import patch
 from xml.sax.saxutils import escape
 
 import pytest
+import requests
 from lxml import etree
 
 from osdd2pygeofilter.converter import convert, render_evaluator
@@ -22,6 +23,9 @@ if TYPE_CHECKING:
 class GeneratedModule(Protocol):
     """Generated conversion APIs and advertised option metadata."""
 
+    METHOD: str
+    URL_TEMPLATE: str
+
     PARAMETER_OPTIONS: Mapping[str, tuple[str, ...]]
 
     def from_cql2_text(
@@ -31,7 +35,7 @@ class GeneratedModule(Protocol):
         attribute_map: Mapping[str, str] | None = None,
     ) -> dict[str, str]: ...
 
-    def from_cql2_json(self, expression: str) -> dict[str, str]: ...
+    def from_cql2_json(self, expression: str | dict[str, object]) -> dict[str, str]: ...
 
     def invoke(
         self, result: dict[str, str], defaults: Mapping[str, str] | None = None
@@ -245,11 +249,11 @@ def test_document_languages_encodings(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     "template",
     [
-        "https://example.test/{searchTerms}?n={count}",
-        "https://example.test/?q=x{searchTerms}",
-        "https://example.test/?q={searchTerms}&q={count}",
+        "https://example.test/?q={searchTerms",
+        "https://example.test/?q={}",
+        "ftp://example.test/?q={searchTerms}",
         "https://example.test/?q={unknown:name}",
-        "https://example.test/?q={searchTerms}#fragment",
+        "https://example.test/?q={{searchTerms}}",
     ],
 )
 def test_bad_templates_do_not_overwrite(tmp_path: Path, template: str) -> None:
@@ -274,9 +278,11 @@ def test_url_selection_and_determinism() -> None:
 
 def test_source_literals_are_escaped(tmp_path: Path) -> None:
     generated = generate(tmp_path, service("https://example.test/?q={searchTerms?}&fixed='quoted'"))
-    with patch("requests.get") as request:
+    with patch("requests.request") as request:
+        request.return_value.headers = {}
+        request.return_value.json.return_value = {}
         generated.invoke_from_cql2_text("searchTerms = 'ice'")
-    assert request.call_args.kwargs["params"] == {"q": "ice", "fixed": "'quoted'"}
+    request.assert_called_once_with("GET", "https://example.test/?q=ice&fixed='quoted'", timeout=30)
     with pytest.raises(ValueError, match="fixed"):
         generated.invoke_from_cql2_text("searchTerms = 'ice'", defaults={"fixed": "replacement"})
 
@@ -486,16 +492,19 @@ def test_options_do_not_override_standard_enum(tmp_path: Path) -> None:
 
 
 def test_defaults_are_validated_and_filter_values_take_precedence(adapter: GeneratedModule) -> None:
-    with patch("requests.get") as request:
+    with patch("requests.request") as request:
+        request.return_value.headers = {}
+        request.return_value.json.return_value = {}
         adapter.invoke_from_cql2_text("count = 4", defaults={"n": "2"})
-    assert request.call_args.kwargs["params"]["n"] == "4"
+    assert "n=4" in request.call_args.args[1]
+    assert "n=2" not in request.call_args.args[1]
     with pytest.raises(ValueError, match="Unknown"):
         adapter.invoke_from_cql2_text("count = 4", defaults={"other": "1"})
     with pytest.raises(ValueError):
         adapter.invoke_from_cql2_text("searchTerms = 'ice'", defaults={"n": "-1"})
 
 
-def test_option_warnings_follow_final_assignments(
+def test_option_warnings_follow_each_assignment(
     tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
     generated = generate(
@@ -514,7 +523,8 @@ def test_option_warnings_follow_final_assignments(
         "mission = 'Sentinel-3' AND mission = 'Sentinel-3'",
         attribute_map={"mission": "earth:platform"},
     ) == {"platform": "Sentinel-3"}
-    assert len(caplog.records) == 1
+    first_warning, repeated_warning = caplog.records
+    assert first_warning.getMessage() == repeated_warning.getMessage()
     caplog.clear()
     assert generated.from_cql2_json(
         '{"op":"=","args":[{"property":"earth:platform"},"Sentinel-3"]}'
@@ -536,7 +546,8 @@ def test_invocation_accepts_unlisted_options_and_sends_decoded_parameters(
         ),
     )
     caplog.set_level(logging.WARNING)
-    with patch("requests.get") as request:
+    with patch("requests.request") as request:
+        request.return_value.headers = {}
         request.return_value.json.return_value = {"features": []}
         if syntax == "text":
             result = generated.invoke_from_cql2_text(
@@ -549,10 +560,293 @@ def test_invocation_accepts_unlisted_options_and_sends_decoded_parameters(
             )
     assert result == {"features": []}
     request.assert_called_once_with(
-        "https://example.test/search",
-        params={"q": "snow & ice", "n": "5", "format": "json"},
+        "GET",
+        "https://example.test/search?q=snow%20%26%20ice&n=5&format=json",
         timeout=30,
     )
     request.return_value.raise_for_status.assert_called_once_with()
     assert len(caplog.records) == 1
     assert "snow & ice" in caplog.text
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [None, True, 5, 1.5, "text", [1, "two", None], {"features": [{"id": "one"}]}],
+)
+def test_invocation_preserves_json_response_types(
+    adapter: GeneratedModule, payload: object
+) -> None:
+    with patch("requests.request") as request:
+        request.return_value.headers = {}
+        request.return_value.json.return_value = payload
+        assert adapter.invoke({"q": "ice"}) == payload
+
+
+def test_json_conversion_accepts_decoded_objects(adapter: GeneratedModule) -> None:
+    assert adapter.from_cql2_json({"op": "=", "args": [{"property": "count"}, 4]}) == {"n": "4"}
+
+
+@pytest.mark.parametrize("payload", [{1: "non-string key"}, {"value": object()}])
+def test_invocation_rejects_non_json_response_values(
+    adapter: GeneratedModule, payload: object
+) -> None:
+    with patch("requests.request") as request:
+        request.return_value.headers = {}
+        request.return_value.json.return_value = payload
+        with pytest.raises(ValueError, match="JSON"):
+            adapter.invoke({"q": "ice"})
+
+
+def test_generated_option_literals_preserve_non_bmp_unicode(tmp_path: Path) -> None:
+    generated = generate(
+        tmp_path,
+        service(
+            "https://example.test/?q={searchTerms?}",
+            '<p:Parameter name="q" value="{searchTerms?}"><p:Option value="🛰️雪"/></p:Parameter>',
+        ),
+    )
+    assert generated.PARAMETER_OPTIONS == {"q": ("🛰️雪",)}
+    assert generated.from_cql2_text("searchTerms = '🛰️雪'") == {"q": "🛰️雪"}
+
+
+@pytest.mark.parametrize(
+    ("expression", "warned_values"),
+    [
+        ("count = 5", ("5",)),
+        ("5 = count", ("5",)),
+        ('"earth:cloudCover" < 20', ("20[",)),
+        ('"earth:cloudCover" BETWEEN 10 AND 20', ("[10,20]",)),
+        ('"earth:cloudCover" IN (10,20)', ("{10,20}",)),
+        (
+            '"earth:cloudCover" >= 10 AND "earth:cloudCover" < 20',
+            ("[10", "20[", "[10,20["),
+        ),
+        ('S_INTERSECTS("g:geometry", POINT(10 20))', ("POINT (10.0 20.0)", "intersects")),
+    ],
+)
+def test_handlers_warn_for_assigned_and_computed_values(
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+    expression: str,
+    warned_values: tuple[str, ...],
+) -> None:
+    generated = generate(
+        tmp_path,
+        service(
+            "https://example.test/?n={count?}&cloud={earth:cloudCover?}"
+            "&geometry={g:geometry?}&relation={g:relation?}",
+            '<p:Parameter name="n" value="{count?}"><p:Option value="1"/></p:Parameter>'
+            '<p:Parameter name="cloud" value="{earth:cloudCover?}">'
+            '<p:Option value="0"/></p:Parameter>'
+            '<p:Parameter name="geometry" value="{g:geometry?}">'
+            '<p:Option value="POINT (0 0)"/></p:Parameter>'
+            '<p:Parameter name="relation" value="{g:relation?}">'
+            '<p:Option value="contains"/></p:Parameter>',
+        ),
+    )
+    caplog.set_level(logging.WARNING)
+    generated.from_cql2_text(expression)
+    assert len(caplog.records) == len(warned_values)
+    for record, value in zip(caplog.records, warned_values, strict=True):
+        assert record.levelno == logging.WARNING
+        assert f"value {value!r} outside advertised options" in record.getMessage()
+
+
+def test_assignment_warnings_precede_failed_conjunction(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    generated = generate(
+        tmp_path,
+        service(
+            "https://example.test/?n={count?}",
+            '<p:Parameter name="n" value="{count?}"><p:Option value="1"/></p:Parameter>',
+        ),
+    )
+    caplog.set_level(logging.WARNING)
+    with pytest.raises(ValueError, match="Conflicting"):
+        generated.from_cql2_text("count = 5 AND count = 6")
+    first_warning, second_warning = caplog.records
+    assert "value '5'" in first_warning.getMessage()
+    assert "value '6'" in second_warning.getMessage()
+
+
+@pytest.mark.parametrize(
+    ("template", "parameters", "expected"),
+    [
+        (
+            "https://example.test/feed/{startPage?}",
+            {},
+            "https://example.test/feed/",
+        ),
+        (
+            "https://example.test/find/{searchTerms}?q={searchTerms}&n={count?}",
+            {"q": "ice/snow +雪%20"},
+            "https://example.test/find/ice%2Fsnow%20%2B%E9%9B%AA%2520"
+            "?q=ice%2Fsnow%20%2B%E9%9B%AA%2520&n=",
+        ),
+        (
+            "https://example.test/search?filter=pre:{searchTerms}:{count?}:post"
+            "&flag&fixed=%2f+%20&fixed=second#results",
+            {"searchTerms": "a&b", "count": "5"},
+            "https://example.test/search?filter=pre:a%26b:5:post"
+            "&flag&fixed=%2f+%20&fixed=second#results",
+        ),
+        (
+            "https://example.test/?q={searchTerms}&q={count}&q={searchTerms}",
+            {"searchTerms": "ice", "count": "3"},
+            "https://example.test/?q=ice&q=3&q=ice",
+        ),
+        (
+            "https://example.test/{earth:platform}/items?cloud={earth:cloudCover?}",
+            {"earth:platform": "Sentinel-1", "cloud": "[10,20]"},
+            "https://example.test/Sentinel-1/items?cloud=%5B10%2C20%5D",
+        ),
+        (
+            "https://example.test/?{searchTerms}=value#section-{count?}",
+            {"searchTerms": "ice snow", "count": "2"},
+            "https://example.test/?ice%20snow=value#section-2",
+        ),
+        (
+            "https://{eum:host}/search/{searchTerms}",
+            {"eum:host": "example.test", "searchTerms": "ice"},
+            "https://example.test/search/ice",
+        ),
+    ],
+)
+def test_invocation_expands_original_url_template(
+    tmp_path: Path, template: str, parameters: dict[str, str], expected: str
+) -> None:
+    generated = generate(tmp_path, service(template))
+    assert template == generated.URL_TEMPLATE
+    with patch("requests.request") as request:
+        request.return_value.headers = {}
+        request.return_value.json.return_value = {}
+        generated.invoke(parameters)
+    request.assert_called_once_with("GET", expected, timeout=30)
+
+
+def test_path_parameter_uses_declared_name_and_constraints(tmp_path: Path) -> None:
+    generated = generate(
+        tmp_path,
+        service(
+            "https://example.test/catalog/{earth:platform}/search/{searchTerms}",
+            '<p:Parameter name="platform" value="{earth:platform}" pattern="Sentinel-[0-9]+"/>',
+        ),
+    )
+    with patch("requests.request") as request:
+        request.return_value.headers = {}
+        request.return_value.json.return_value = {}
+        generated.invoke_from_cql2_text(
+            "\"earth:platform\" = 'Sentinel-3' AND searchTerms = 'snow & ice'"
+        )
+    request.assert_called_once_with(
+        "GET", "https://example.test/catalog/Sentinel-3/search/snow%20%26%20ice", timeout=30
+    )
+    with patch("requests.request") as request, pytest.raises(ValueError, match="pattern"):
+        generated.invoke({"platform": "other", "searchTerms": "ice"})
+    request.assert_not_called()
+
+
+def test_required_occurrence_wins_over_optional_repetition(tmp_path: Path) -> None:
+    generated = generate(tmp_path, service("https://example.test/{searchTerms?}?q={searchTerms}"))
+    with patch("requests.request") as request, pytest.raises(ValueError, match="required"):
+        generated.invoke({})
+    request.assert_not_called()
+
+
+def test_expanded_url_requires_http_scheme(tmp_path: Path) -> None:
+    template = "{eum:scheme}://example.test/{searchTerms}"
+    generated = generate(tmp_path, service(template))
+    assert template == generated.URL_TEMPLATE
+    with patch("requests.request") as request:
+        request.return_value.headers = {}
+        request.return_value.json.return_value = {}
+        generated.invoke({"eum:scheme": "https", "searchTerms": "ice"})
+    request.assert_called_once_with("GET", "https://example.test/ice", timeout=30)
+    with patch("requests.request") as request, pytest.raises(ValueError, match="HTTP"):
+        generated.invoke({"eum:scheme": "ftp", "searchTerms": "ice"})
+    request.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("attributes", "method"),
+    [("", "GET"), ('method="post"', "POST"), ('p:method="PUT"', "PUT")],
+)
+def test_invocation_uses_declared_method(tmp_path: Path, attributes: str, method: str) -> None:
+    generated = generate(tmp_path, service("https://example.test/", attributes=attributes))
+    assert method == generated.METHOD
+    with patch("requests.request") as request:
+        request.return_value.headers = {}
+        request.return_value.json.return_value = {}
+        generated.invoke({})
+    request.assert_called_once_with(method, "https://example.test/", timeout=30)
+
+
+@pytest.mark.parametrize("method", ["", "GET POST"])
+def test_rejects_invalid_http_method(tmp_path: Path, method: str) -> None:
+    with pytest.raises(ValueError, match="Invalid HTTP method"):
+        generate(tmp_path, service("https://example.test/", attributes=f'method="{method}"'))
+
+
+@pytest.mark.parametrize("explicit", [False, True])
+def test_input_encoding_controls_percent_encoding(tmp_path: Path, explicit: bool) -> None:
+    declarations = "<InputEncoding>ISO-8859-1</InputEncoding>"
+    if explicit:
+        declarations = "<InputEncoding>UTF-8</InputEncoding>" + declarations
+    generated = generate(
+        tmp_path,
+        service(
+            "https://example.test/{searchTerms}?enc={inputEncoding}&out={outputEncoding}",
+            extra=declarations,
+        ),
+    )
+    parameters = {"searchTerms": "café &/%"}
+    if explicit:
+        parameters["enc"] = "latin1"
+    with patch("requests.request") as request:
+        request.return_value.headers = {}
+        request.return_value.json.return_value = {}
+        generated.invoke(parameters)
+    encoding = "latin1" if explicit else "ISO-8859-1"
+    request.assert_called_once_with(
+        "GET", f"https://example.test/caf%E9%20%26%2F%25?enc={encoding}&out=UTF-8", timeout=30
+    )
+
+
+@pytest.mark.parametrize(
+    ("charset", "explicit", "encoding"),
+    [(None, False, "iso8859-1"), ("UTF-8", False, "utf-8"), (None, True, "utf-8")],
+)
+def test_output_encoding_decodes_response(
+    tmp_path: Path, charset: str | None, explicit: bool, encoding: str
+) -> None:
+    generated = generate(
+        tmp_path,
+        service(
+            "https://example.test/?out={outputEncoding?}",
+            extra="<OutputEncoding>ISO-8859-1</OutputEncoding><OutputEncoding>UTF-8</OutputEncoding>",
+        ),
+    )
+    response = requests.Response()
+    response.status_code = 200
+    response.headers["Content-Type"] = "application/json"
+    if charset:
+        response.headers["Content-Type"] += f'; charset="{charset}"'
+    response._content = '{"name": "café"}'.encode(encoding)
+    with patch("requests.request", return_value=response):
+        assert generated.invoke({"out": "UTF-8"} if explicit else {}) == {"name": "café"}
+    assert response.encoding == encoding
+
+
+@pytest.mark.parametrize("encoding", ["unknown-codec", "base64_codec", "ASCII"])
+def test_invalid_input_encoding_fails_before_request(tmp_path: Path, encoding: str) -> None:
+    generated = generate(
+        tmp_path,
+        service(
+            "https://example.test/?q={searchTerms}",
+            extra=f"<InputEncoding>{encoding}</InputEncoding>",
+        ),
+    )
+    with patch("requests.request") as request, pytest.raises(ValueError):
+        generated.invoke({"q": "雪"})
+    request.assert_not_called()

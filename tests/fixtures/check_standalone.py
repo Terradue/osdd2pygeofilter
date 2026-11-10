@@ -26,7 +26,7 @@ class BlockGeneratorImports(importlib.abc.MetaPathFinder):
         target: ModuleType | None = None,
     ) -> ModuleSpec | None:
         """Reject generator dependencies, including transitive imports."""
-        if fullname.split(".", 1)[0] in {"osdd2pygeofilter", "jinja2", "lxml", "uritemplate"}:
+        if fullname.split(".", 1)[0] in {"osdd2pygeofilter", "jinja2", "lxml"}:
             raise ModuleNotFoundError(f"Generator dependency unavailable: {fullname}")
         return None
 
