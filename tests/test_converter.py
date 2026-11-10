@@ -497,7 +497,7 @@ def test_defaults_are_validated_and_filter_values_take_precedence(adapter: Gener
         adapter.invoke_from_cql2_text("searchTerms = 'ice'", defaults={"n": "-1"})
 
 
-def test_option_warnings_follow_final_assignments(
+def test_option_warnings_follow_each_assignment(
     tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
     generated = generate(
@@ -516,7 +516,8 @@ def test_option_warnings_follow_final_assignments(
         "mission = 'Sentinel-3' AND mission = 'Sentinel-3'",
         attribute_map={"mission": "earth:platform"},
     ) == {"platform": "Sentinel-3"}
-    assert len(caplog.records) == 1
+    first_warning, repeated_warning = caplog.records
+    assert first_warning.getMessage() == repeated_warning.getMessage()
     caplog.clear()
     assert generated.from_cql2_json(
         '{"op":"=","args":[{"property":"earth:platform"},"Sentinel-3"]}'
@@ -596,3 +597,64 @@ def test_generated_option_literals_preserve_non_bmp_unicode(tmp_path: Path) -> N
     )
     assert generated.PARAMETER_OPTIONS == {"q": ("🛰️雪",)}
     assert generated.from_cql2_text("searchTerms = '🛰️雪'") == {"q": "🛰️雪"}
+
+
+@pytest.mark.parametrize(
+    ("expression", "warned_values"),
+    [
+        ("count = 5", ("5",)),
+        ("5 = count", ("5",)),
+        ('"earth:cloudCover" < 20', ("20[",)),
+        ('"earth:cloudCover" BETWEEN 10 AND 20', ("[10,20]",)),
+        ('"earth:cloudCover" IN (10,20)', ("{10,20}",)),
+        (
+            '"earth:cloudCover" >= 10 AND "earth:cloudCover" < 20',
+            ("[10", "20[", "[10,20["),
+        ),
+        ('S_INTERSECTS("g:geometry", POINT(10 20))', ("POINT (10.0 20.0)", "intersects")),
+    ],
+)
+def test_handlers_warn_for_assigned_and_computed_values(
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+    expression: str,
+    warned_values: tuple[str, ...],
+) -> None:
+    generated = generate(
+        tmp_path,
+        service(
+            "https://example.test/?n={count?}&cloud={earth:cloudCover?}"
+            "&geometry={g:geometry?}&relation={g:relation?}",
+            '<p:Parameter name="n" value="{count?}"><p:Option value="1"/></p:Parameter>'
+            '<p:Parameter name="cloud" value="{earth:cloudCover?}">'
+            '<p:Option value="0"/></p:Parameter>'
+            '<p:Parameter name="geometry" value="{g:geometry?}">'
+            '<p:Option value="POINT (0 0)"/></p:Parameter>'
+            '<p:Parameter name="relation" value="{g:relation?}">'
+            '<p:Option value="contains"/></p:Parameter>',
+        ),
+    )
+    caplog.set_level(logging.WARNING)
+    generated.from_cql2_text(expression)
+    assert len(caplog.records) == len(warned_values)
+    for record, value in zip(caplog.records, warned_values, strict=True):
+        assert record.levelno == logging.WARNING
+        assert f"value {value!r} outside advertised options" in record.getMessage()
+
+
+def test_assignment_warnings_precede_failed_conjunction(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    generated = generate(
+        tmp_path,
+        service(
+            "https://example.test/?n={count?}",
+            '<p:Parameter name="n" value="{count?}"><p:Option value="1"/></p:Parameter>',
+        ),
+    )
+    caplog.set_level(logging.WARNING)
+    with pytest.raises(ValueError, match="Conflicting"):
+        generated.from_cql2_text("count = 5 AND count = 6")
+    first_warning, second_warning = caplog.records
+    assert "value '5'" in first_warning.getMessage()
+    assert "value '6'" in second_warning.getMessage()

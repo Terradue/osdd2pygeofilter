@@ -156,6 +156,24 @@ def _scalar(value: object) -> str:
     raise NotImplementedError("Expected a scalar literal")
 
 
+def _assignment(binding: Binding, value: str) -> dict[str, str]:
+    """Create a parameter assignment, warning immediately for unlisted values.
+
+    Options are suggestions, so the assigned value remains unchanged. Each
+    handler assignment is checked independently, including repeated values.
+    """
+    options = PARAMETER_OPTIONS.get(binding.query)
+    if options and value not in options:
+        logging.getLogger(__name__).warning(
+            "Parameter %s has value %r outside advertised options %r; "
+            "accepting it because options are suggestions",
+            binding.query,
+            value,
+            options,
+        )
+    return {binding.query: value}
+
+
 # The upstream base class is untyped; handlers below retain their signatures.
 class OpenSearchEvaluator(Evaluator):  # type: ignore[misc]
     """Translate representable CQL2 predicates into decoded query parameters.
@@ -192,7 +210,7 @@ class OpenSearchEvaluator(Evaluator):  # type: ignore[misc]
             lhs, rhs = rhs, lhs
         if not isinstance(lhs, Binding) or not isinstance(rhs, str):
             raise NotImplementedError("Equality needs one property and one scalar")
-        return {lhs.query: rhs}
+        return _assignment(lhs, rhs)
 
     @_handle(ast.And)
     def conjunction(
@@ -204,11 +222,12 @@ class OpenSearchEvaluator(Evaluator):  # type: ignore[misc]
         """Combine assignments without discarding conflicting predicates."""
         result = dict(lhs)
         for key, value in rhs.items():
-            combined = value
             if key in result and result[key] != value:
                 binding = next(binding for binding in BINDINGS if binding.query == key)
                 combined = intersect_ranges(binding, result[key], value)
-            result[key] = combined
+                result.update(_assignment(binding, combined))
+            else:
+                result[key] = value
         return result
 
     def _range_binding(self, value: object) -> Binding:
@@ -233,7 +252,7 @@ class OpenSearchEvaluator(Evaluator):  # type: ignore[misc]
             ">": f"]{value}",
             ">=": f"[{value}",
         }[operator]
-        return {binding.query: expression}
+        return _assignment(binding, expression)
 
     @_handle(ast.Between)
     def between(
@@ -247,7 +266,7 @@ class OpenSearchEvaluator(Evaluator):  # type: ignore[misc]
         if node.not_:
             raise NotImplementedError("NOT BETWEEN is not representable")
         binding = self._range_binding(lhs)
-        return {binding.query: f"[{_scalar(low)},{_scalar(high)}]"}
+        return _assignment(binding, f"[{_scalar(low)},{_scalar(high)}]")
 
     @_handle(ast.In)
     def in_list(self, node: ast.In, lhs: object, *members: object) -> dict[str, str]:
@@ -255,7 +274,7 @@ class OpenSearchEvaluator(Evaluator):  # type: ignore[misc]
         if node.not_:
             raise NotImplementedError("NOT IN is not representable")
         binding = self._range_binding(lhs)
-        return {binding.query: "{" + ",".join(_scalar(item) for item in members) + "}"}
+        return _assignment(binding, "{" + ",".join(_scalar(item) for item in members) + "}")
 
     @_handle(values.Geometry, values.Envelope)
     def geometry(self, node: values.Geometry | values.Envelope) -> str:
@@ -274,33 +293,11 @@ class OpenSearchEvaluator(Evaluator):  # type: ignore[misc]
             lhs, rhs = rhs, lhs
         if not isinstance(lhs, Binding) or (lhs.namespace, lhs.local) != (GEO, "geometry"):
             raise NotImplementedError("Intersection requires a geo:geometry property")
-        result = {lhs.query: _scalar(rhs)}
+        result = _assignment(lhs, _scalar(rhs))
         for binding in BINDINGS:
             if (binding.namespace, binding.local) == (GEO, "relation"):
-                result[binding.query] = "intersects"
+                result.update(_assignment(binding, "intersects"))
         return result
-
-    def adopt_result(self, result: object) -> dict[str, str]:
-        """Log unadvertised option values without rejecting them.
-
-        Warnings use the generated module's standard-library logger and are
-        emitted once per final parameter assignment in each evaluation.
-
-        Raises:
-            NotImplementedError: If the expression is not a CQL2 predicate.
-        """
-        parameters = _parameters(result)
-        for parameter, value in parameters.items():
-            options = PARAMETER_OPTIONS.get(parameter)
-            if options and value not in options:
-                logging.getLogger(__name__).warning(
-                    "Parameter %s has value %r outside advertised options %r; "
-                    "accepting it because options are suggestions",
-                    parameter,
-                    value,
-                    options,
-                )
-        return parameters
 
 
 def to_opensearch(
