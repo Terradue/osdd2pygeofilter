@@ -37,3 +37,4 @@ site/
 .DS_Store
 
 .task
+uv.lock
