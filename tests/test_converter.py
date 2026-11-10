@@ -10,6 +10,7 @@ from unittest.mock import patch
 from xml.sax.saxutils import escape
 
 import pytest
+import requests
 from lxml import etree
 
 from osdd2pygeofilter.converter import convert, render_evaluator
@@ -22,6 +23,7 @@ if TYPE_CHECKING:
 class GeneratedModule(Protocol):
     """Generated conversion APIs and advertised option metadata."""
 
+    METHOD: str
     URL_TEMPLATE: str
 
     PARAMETER_OPTIONS: Mapping[str, tuple[str, ...]]
@@ -276,10 +278,11 @@ def test_url_selection_and_determinism() -> None:
 
 def test_source_literals_are_escaped(tmp_path: Path) -> None:
     generated = generate(tmp_path, service("https://example.test/?q={searchTerms?}&fixed='quoted'"))
-    with patch("requests.get") as request:
+    with patch("requests.request") as request:
+        request.return_value.headers = {}
         request.return_value.json.return_value = {}
         generated.invoke_from_cql2_text("searchTerms = 'ice'")
-    request.assert_called_once_with("https://example.test/?q=ice&fixed='quoted'", timeout=30)
+    request.assert_called_once_with("GET", "https://example.test/?q=ice&fixed='quoted'", timeout=30)
     with pytest.raises(ValueError, match="fixed"):
         generated.invoke_from_cql2_text("searchTerms = 'ice'", defaults={"fixed": "replacement"})
 
@@ -489,11 +492,12 @@ def test_options_do_not_override_standard_enum(tmp_path: Path) -> None:
 
 
 def test_defaults_are_validated_and_filter_values_take_precedence(adapter: GeneratedModule) -> None:
-    with patch("requests.get") as request:
+    with patch("requests.request") as request:
+        request.return_value.headers = {}
         request.return_value.json.return_value = {}
         adapter.invoke_from_cql2_text("count = 4", defaults={"n": "2"})
-    assert "n=4" in request.call_args.args[0]
-    assert "n=2" not in request.call_args.args[0]
+    assert "n=4" in request.call_args.args[1]
+    assert "n=2" not in request.call_args.args[1]
     with pytest.raises(ValueError, match="Unknown"):
         adapter.invoke_from_cql2_text("count = 4", defaults={"other": "1"})
     with pytest.raises(ValueError):
@@ -542,7 +546,8 @@ def test_invocation_accepts_unlisted_options_and_sends_decoded_parameters(
         ),
     )
     caplog.set_level(logging.WARNING)
-    with patch("requests.get") as request:
+    with patch("requests.request") as request:
+        request.return_value.headers = {}
         request.return_value.json.return_value = {"features": []}
         if syntax == "text":
             result = generated.invoke_from_cql2_text(
@@ -555,6 +560,7 @@ def test_invocation_accepts_unlisted_options_and_sends_decoded_parameters(
             )
     assert result == {"features": []}
     request.assert_called_once_with(
+        "GET",
         "https://example.test/search?q=snow%20%26%20ice&n=5&format=json",
         timeout=30,
     )
@@ -570,7 +576,8 @@ def test_invocation_accepts_unlisted_options_and_sends_decoded_parameters(
 def test_invocation_preserves_json_response_types(
     adapter: GeneratedModule, payload: object
 ) -> None:
-    with patch("requests.get") as request:
+    with patch("requests.request") as request:
+        request.return_value.headers = {}
         request.return_value.json.return_value = payload
         assert adapter.invoke({"q": "ice"}) == payload
 
@@ -583,7 +590,8 @@ def test_json_conversion_accepts_decoded_objects(adapter: GeneratedModule) -> No
 def test_invocation_rejects_non_json_response_values(
     adapter: GeneratedModule, payload: object
 ) -> None:
-    with patch("requests.get") as request:
+    with patch("requests.request") as request:
+        request.return_value.headers = {}
         request.return_value.json.return_value = payload
         with pytest.raises(ValueError, match="JSON"):
             adapter.invoke({"q": "ice"})
@@ -710,10 +718,11 @@ def test_invocation_expands_original_url_template(
 ) -> None:
     generated = generate(tmp_path, service(template))
     assert template == generated.URL_TEMPLATE
-    with patch("requests.get") as request:
+    with patch("requests.request") as request:
+        request.return_value.headers = {}
         request.return_value.json.return_value = {}
         generated.invoke(parameters)
-    request.assert_called_once_with(expected, timeout=30)
+    request.assert_called_once_with("GET", expected, timeout=30)
 
 
 def test_path_parameter_uses_declared_name_and_constraints(tmp_path: Path) -> None:
@@ -724,22 +733,23 @@ def test_path_parameter_uses_declared_name_and_constraints(tmp_path: Path) -> No
             '<p:Parameter name="platform" value="{earth:platform}" pattern="Sentinel-[0-9]+"/>',
         ),
     )
-    with patch("requests.get") as request:
+    with patch("requests.request") as request:
+        request.return_value.headers = {}
         request.return_value.json.return_value = {}
         generated.invoke_from_cql2_text(
             "\"earth:platform\" = 'Sentinel-3' AND searchTerms = 'snow & ice'"
         )
     request.assert_called_once_with(
-        "https://example.test/catalog/Sentinel-3/search/snow%20%26%20ice", timeout=30
+        "GET", "https://example.test/catalog/Sentinel-3/search/snow%20%26%20ice", timeout=30
     )
-    with patch("requests.get") as request, pytest.raises(ValueError, match="pattern"):
+    with patch("requests.request") as request, pytest.raises(ValueError, match="pattern"):
         generated.invoke({"platform": "other", "searchTerms": "ice"})
     request.assert_not_called()
 
 
 def test_required_occurrence_wins_over_optional_repetition(tmp_path: Path) -> None:
     generated = generate(tmp_path, service("https://example.test/{searchTerms?}?q={searchTerms}"))
-    with patch("requests.get") as request, pytest.raises(ValueError, match="required"):
+    with patch("requests.request") as request, pytest.raises(ValueError, match="required"):
         generated.invoke({})
     request.assert_not_called()
 
@@ -748,10 +758,95 @@ def test_expanded_url_requires_http_scheme(tmp_path: Path) -> None:
     template = "{eum:scheme}://example.test/{searchTerms}"
     generated = generate(tmp_path, service(template))
     assert template == generated.URL_TEMPLATE
-    with patch("requests.get") as request:
+    with patch("requests.request") as request:
+        request.return_value.headers = {}
         request.return_value.json.return_value = {}
         generated.invoke({"eum:scheme": "https", "searchTerms": "ice"})
-    request.assert_called_once_with("https://example.test/ice", timeout=30)
-    with patch("requests.get") as request, pytest.raises(ValueError, match="HTTP"):
+    request.assert_called_once_with("GET", "https://example.test/ice", timeout=30)
+    with patch("requests.request") as request, pytest.raises(ValueError, match="HTTP"):
         generated.invoke({"eum:scheme": "ftp", "searchTerms": "ice"})
+    request.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("attributes", "method"),
+    [("", "GET"), ('method="post"', "POST"), ('p:method="PUT"', "PUT")],
+)
+def test_invocation_uses_declared_method(tmp_path: Path, attributes: str, method: str) -> None:
+    generated = generate(tmp_path, service("https://example.test/", attributes=attributes))
+    assert method == generated.METHOD
+    with patch("requests.request") as request:
+        request.return_value.headers = {}
+        request.return_value.json.return_value = {}
+        generated.invoke({})
+    request.assert_called_once_with(method, "https://example.test/", timeout=30)
+
+
+@pytest.mark.parametrize("method", ["", "GET POST"])
+def test_rejects_invalid_http_method(tmp_path: Path, method: str) -> None:
+    with pytest.raises(ValueError, match="Invalid HTTP method"):
+        generate(tmp_path, service("https://example.test/", attributes=f'method="{method}"'))
+
+
+@pytest.mark.parametrize("explicit", [False, True])
+def test_input_encoding_controls_percent_encoding(tmp_path: Path, explicit: bool) -> None:
+    declarations = "<InputEncoding>ISO-8859-1</InputEncoding>"
+    if explicit:
+        declarations = "<InputEncoding>UTF-8</InputEncoding>" + declarations
+    generated = generate(
+        tmp_path,
+        service(
+            "https://example.test/{searchTerms}?enc={inputEncoding}&out={outputEncoding}",
+            extra=declarations,
+        ),
+    )
+    parameters = {"searchTerms": "café &/%"}
+    if explicit:
+        parameters["enc"] = "latin1"
+    with patch("requests.request") as request:
+        request.return_value.headers = {}
+        request.return_value.json.return_value = {}
+        generated.invoke(parameters)
+    encoding = "latin1" if explicit else "ISO-8859-1"
+    request.assert_called_once_with(
+        "GET", f"https://example.test/caf%E9%20%26%2F%25?enc={encoding}&out=UTF-8", timeout=30
+    )
+
+
+@pytest.mark.parametrize(
+    ("charset", "explicit", "encoding"),
+    [(None, False, "iso8859-1"), ("UTF-8", False, "utf-8"), (None, True, "utf-8")],
+)
+def test_output_encoding_decodes_response(
+    tmp_path: Path, charset: str | None, explicit: bool, encoding: str
+) -> None:
+    generated = generate(
+        tmp_path,
+        service(
+            "https://example.test/?out={outputEncoding?}",
+            extra="<OutputEncoding>ISO-8859-1</OutputEncoding><OutputEncoding>UTF-8</OutputEncoding>",
+        ),
+    )
+    response = requests.Response()
+    response.status_code = 200
+    response.headers["Content-Type"] = "application/json"
+    if charset:
+        response.headers["Content-Type"] += f'; charset="{charset}"'
+    response._content = '{"name": "café"}'.encode(encoding)
+    with patch("requests.request", return_value=response):
+        assert generated.invoke({"out": "UTF-8"} if explicit else {}) == {"name": "café"}
+    assert response.encoding == encoding
+
+
+@pytest.mark.parametrize("encoding", ["unknown-codec", "base64_codec", "ASCII"])
+def test_invalid_input_encoding_fails_before_request(tmp_path: Path, encoding: str) -> None:
+    generated = generate(
+        tmp_path,
+        service(
+            "https://example.test/?q={searchTerms}",
+            extra=f"<InputEncoding>{encoding}</InputEncoding>",
+        ),
+    )
+    with patch("requests.request") as request, pytest.raises(ValueError):
+        generated.invoke({"q": "雪"})
     request.assert_not_called()

@@ -389,16 +389,26 @@ def _declared_core(
 ) -> None:
     if local in {"startIndex", "startPage"}:
         _integer(value, offsets[local == "startPage"])
-    if local in {"inputEncoding", "outputEncoding"}:
-        try:
-            encoding = codecs.lookup(value)
-        except LookupError as error:
-            raise ValueError(f"Unknown character encoding: {value}") from error
-        if local == "inputEncoding" and encoding.name != "utf-8":
-            raise ValueError("URL expansion supports UTF-8 inputEncoding only")
     advertised = declarations.get(local, ())
-    if advertised and "*" not in advertised:
+    if local in {"inputEncoding", "outputEncoding"}:
+        encoding = character_encoding(value)
+        if advertised and "*" not in advertised:
+            _choice(encoding, tuple(character_encoding(item) for item in advertised))
+    elif advertised and "*" not in advertised:
         _choice(value, advertised)
+
+
+def character_encoding(value: str) -> str:
+    """Resolve a text encoding to its canonical codec name.
+
+    Raises:
+        ValueError: If the name is unknown or does not identify a text encoding.
+    """
+    try:
+        "".encode(value)
+        return codecs.lookup(value).name
+    except LookupError as error:
+        raise ValueError(f"Unknown character encoding: {value}") from error
 
 
 def intersect_ranges(binding: Binding, left: str, right: str) -> str:

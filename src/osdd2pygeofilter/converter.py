@@ -33,10 +33,19 @@ def _select_url(root: _Element, index: int) -> _Element:
     ]
     if index < 0 or index >= len(candidates):
         raise ValueError("No application/json results URL at the requested url_index")
-    selected = candidates[index]
-    if selected.get("method", "GET").upper() != "GET":
-        raise ValueError("Only GET URL templates are supported")
-    return selected
+    return candidates[index]
+
+
+def _http_method(element: _Element) -> str:
+    """Read the declared HTTP method, defaulting to GET.
+
+    Raises:
+        ValueError: If the method is not a valid HTTP token.
+    """
+    method = element.get("method", element.get(f"{{{PARAMETERS}}}method", "GET")).upper()
+    if not re.fullmatch(r"[!#$%&'*+.^_`|~0-9A-Z-]+", method):
+        raise ValueError("Invalid HTTP method")
+    return method
 
 
 def _qualified_name(name: str, element: _Element) -> tuple[str, str]:
@@ -226,6 +235,7 @@ def render_evaluator(service: _Element, *, url_index: int = 0) -> str:
     return environment.get_template("evaluator.py.j2").render(
         validation_source=_validation_source(),
         uri=uri,
+        method=_http_method(element),
         bindings=bindings,
         fixed=fixed,
         parameter_options={
