@@ -66,13 +66,23 @@ python search_example.py
 Output:
 
 ```text
-q=ocean%20%26%20ice&limit=10&format=json
+{'q': 'ocean & ice', 'limit': '10'}
 ```
 
 CQL2 property names match template placeholders: `searchTerms` maps to `q`, and
-`count` maps to `limit`. The result contains neither an endpoint nor a leading
-`?`. Your application can append it to `https://example.test/search?` when making
-a request. Do not URL-encode it again.
+`count` maps to `limit`. The dictionary contains decoded filter values.
+To validate the complete query and call the service, use the generated helper:
+
+```python
+from search_evaluator import invoke
+
+response = invoke(query)
+```
+
+This merges defaults and fixed values such as `format=json`, validates them,
+and makes an HTTP GET. Parameters with advertised options log a warning during
+conversion when their value is not listed; options are suggestions, so this
+warning does not prevent the request.
 
 Next, learn about [remote sources and authentication](../how-to/use-cli.md) and
 [which queries are supported](../explanation/architecture.md).

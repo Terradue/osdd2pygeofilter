@@ -18,7 +18,7 @@ limitations under the License.
 
 Generate a Python evaluator from an OpenSearch Description Document (OSDD) with
 `osdd2pygeofilter`. The generated module translates supported CQL2 filters into
-URL-encoded OpenSearch query strings for that service.
+decoded OpenSearch query parameter dictionaries for that service.
 
 ## Generate an evaluator
 

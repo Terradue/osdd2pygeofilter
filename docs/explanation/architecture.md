@@ -18,7 +18,7 @@ limitations under the License.
 
 The generator compiles a JSON results URL from an lxml OpenSearchDescription root element.
 Jinja2 emits a pygeofilter evaluator with embedded validation definitions;
-`uritemplate` handles URL expansion. The generated module runs without the
+`invoke` sends decoded parameters through `requests`. The generated module runs without the
 `osdd2pygeofilter` package, Jinja2, or lxml. Regenerate it to pick up changes
 to validation rules.
 Only advertised placeholders are exposed as properties. Query names may differ
@@ -50,12 +50,12 @@ are rejected, including mixed scalar/interval conjunctions.
 
 ## Validation
 
-Validation runs for both CQL2 conversion and direct URL building.
+Invocation validates the complete parameter set, including defaults and fixed values, before sending a request. Evaluation logs warnings for unlisted option values.
 
 | Contract | Checks |
 | --- | --- |
 | OpenSearch 1.1 | Required placeholders, integer pagination, URL offsets, declared languages and encodings |
-| Parameter extension | Required occurrence, scalar occurrence limits, options, patterns, inclusive/exclusive numeric or date bounds, numeric steps |
+| Parameter extension | Required occurrence, scalar occurrence limits, patterns, inclusive/exclusive numeric or date bounds, numeric steps |
 | Geo | WGS84 coordinate limits, ordered latitude bounds, antimeridian boxes, finite coordinates/radius, supported relation values, nonempty 2D WKT syntax and bounds |
 | Time | RFC 3339 timestamps with timezone, calendar validity, chronological start/end order |
 | EO | Numeric/date scalar, set and interval syntax, integer fields, cloud/snow percentages, specified enumerations, advertised range/set restrictions and member patterns |
@@ -67,8 +67,7 @@ validation. String parameters without standard enums or advertised constraints
 remain unrestricted. Unknown extension namespaces do not inherit another
 extension's semantics merely because their prefix or local name matches.
 
-URL expansion uses UTF-8. Other input encodings are rejected rather than emitted
-with incorrectly encoded values. Required placeholders need nonempty values.
+The adapter accepts UTF-8 input encoding declarations. Required placeholders need nonempty values.
 Optional placeholders are omitted when absent. No service defaults are invented.
 
 Only GET templates with whole query-value placeholders are supported. Composite
@@ -76,6 +75,24 @@ or path placeholders, fragments, duplicate query names, unsupported occurrence
 counts, and invalid parameter bindings fail during generation. Multiple JSON
 results URLs can be selected using `url_index`. Unknown foreign annotations are
 retained as metadata but do not trigger network requests or dynamic code.
+
+## Advertised options
+
+Parameter `Option` elements suggest values; they do not establish an exhaustive
+enumeration. The generator preserves their submitted values as tuples
+in `PARAMETER_OPTIONS`, keyed by HTTP parameter name, and omits labels, without changing the underlying parameter type.
+Evaluation logs a `WARNING` for each final value missing from its advertised
+options tuple, without rejecting or changing it. Listed values and absent
+parameters are silent. A `pattern` alongside options is enforced at invocation,
+even for an advertised value. Unlisted values remain valid when they satisfy
+the parameter's other constraints.
+
+This follows the [OGC EO guidance](https://docs.ogc.org/is/13-026r9/13-026r9.html)
+on supplying patterns when options describe only a subset of possible values.
+Closed enumerations require an explicit exhaustive contract; existing
+standard-defined enumerations, such as orbit direction, remain enforced.
+The generator does not infer a service-specific Enum, Literal, or schema enum
+from options alone.
 
 ## Specification sources
 
