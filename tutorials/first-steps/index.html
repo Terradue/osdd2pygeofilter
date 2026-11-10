@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><link rel="canonical" href="https://terradue.github.io/osdd2pygeofilter/tutorials/first-steps/" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>First evaluator - OpenSearch to pygeofilter</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../../assets/_mkdocstrings.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "First evaluator";
+        var mkdocs_page_input_path = "tutorials/first-steps.md";
+        var mkdocs_page_url = "/osdd2pygeofilter/tutorials/first-steps/";
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> OpenSearch to pygeofilter
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Tutorials</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../">Overview</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">First evaluator</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#1-save-a-description">1. Save a description</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#2-generate-the-module">2. Generate the module</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#3-convert-a-filter">3. Convert a filter</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../eumetsat/">EUMETSAT product search</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">How-to guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../how-to/">Overview</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../how-to/install/">Install</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../how-to/use-cli/">Use the CLI</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Reference</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../reference/">Overview</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../reference/cli/">CLI</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../reference/api/">Python API</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Explanation</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../explanation/">Overview</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../explanation/architecture/">Supported queries and limitations</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">OpenSearch to pygeofilter</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Tutorials</li>
+      <li class="breadcrumb-item active">First evaluator</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/Terradue/osdd2pygeofilter/edit/main/docs/tutorials/first-steps.md">Edit on Terradue/osdd2pygeofilter</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <!--
+Copyright 2026 Terradue
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
+<h1 id="generate-your-first-evaluator">Generate your first evaluator<a class="headerlink" href="#generate-your-first-evaluator" title="Permanent link">&para;</a></h1>
+<p>First <a href="../../how-to/install/">install the CLI</a>. This walkthrough uses a local
+description, so no running search service is needed.</p>
+<h2 id="1-save-a-description">1. Save a description<a class="headerlink" href="#1-save-a-description" title="Permanent link">&para;</a></h2>
+<p>Create <code>opensearch.xml</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="cp">&lt;?xml version="1.0" encoding="UTF-8"?&gt;</span>
+<span class="nt">&lt;OpenSearchDescription</span><span class="w"> </span><span class="na">xmlns=</span><span class="s">"http://a9.com/-/spec/opensearch/1.1/"</span><span class="nt">&gt;</span>
+<span class="w">  </span><span class="nt">&lt;ShortName&gt;</span>Example<span class="w"> </span>search<span class="nt">&lt;/ShortName&gt;</span>
+<span class="w">  </span><span class="nt">&lt;Description&gt;</span>Example<span class="w"> </span>search<span class="w"> </span>service<span class="nt">&lt;/Description&gt;</span>
+<span class="w">  </span><span class="nt">&lt;Tags&gt;</span>example<span class="w"> </span>search<span class="nt">&lt;/Tags&gt;</span>
+<span class="w">  </span><span class="nt">&lt;Url</span><span class="w"> </span><span class="na">type=</span><span class="s">"application/json"</span>
+<span class="w">       </span><span class="na">template=</span><span class="s">"https://example.test/search?q={searchTerms}&amp;amp;limit={count?}&amp;amp;format=json"</span><span class="nt">/&gt;</span>
+<span class="nt">&lt;/OpenSearchDescription&gt;</span>
+</code></pre></div>
+<p><code>searchTerms</code> is required, <code>count</code> is optional, and <code>format=json</code> is fixed.
+The XML uses <code>&amp;amp;</code> to separate query parameters.</p>
+<h2 id="2-generate-the-module">2. Generate the module<a class="headerlink" href="#2-generate-the-module" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>osdd2pygeofilter<span class="w"> </span>opensearch.xml<span class="w"> </span>--output<span class="w"> </span>search_evaluator.py
+</code></pre></div>
+<p>The command writes <code>search_evaluator.py</code>. Choose an output
+filename that is a valid Python module name. Existing output is replaced.</p>
+<h2 id="3-convert-a-filter">3. Convert a filter<a class="headerlink" href="#3-convert-a-filter" title="Permanent link">&para;</a></h2>
+<p>Save the following as <code>search_example.py</code> beside the generated file:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">search_evaluator</span><span class="w"> </span><span class="kn">import</span> <span class="n">from_cql2_text</span>
+
+<span class="n">query</span> <span class="o">=</span> <span class="n">from_cql2_text</span><span class="p">(</span><span class="s2">"searchTerms = 'ocean &amp; ice' AND count = 10"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+</code></pre></div>
+<p>Run it in the same Python environment:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>search_example.py
+</code></pre></div>
+<p>Output:</p>
+<div class="highlight"><pre><span></span><code>{'q': 'ocean &amp; ice', 'limit': '10'}
+</code></pre></div>
+<p>CQL2 property names match template placeholders: <code>searchTerms</code> maps to <code>q</code>, and
+<code>count</code> maps to <code>limit</code>. The dictionary contains decoded filter values.
+To validate the complete query and call the service, use the generated helper:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">search_evaluator</span><span class="w"> </span><span class="kn">import</span> <span class="n">invoke</span>
+
+<span class="n">response</span> <span class="o">=</span> <span class="n">invoke</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+</code></pre></div>
+<p>This merges defaults with filter values, validates them, expands the original
+URL template (preserving fixed values such as <code>format=json</code>), and makes an HTTP GET (the default when no method is declared). Parameters with advertised options log a warning during
+conversion when their value is not listed; options are suggestions, so this
+warning does not prevent the request.</p>
+<p>Next, learn about <a href="../../how-to/use-cli/">remote sources and authentication</a> and
+<a href="../../explanation/architecture/">which queries are supported</a>.</p>
+<p>For a complete live-service example, continue with
+<a href="../eumetsat/">Search EUMETSAT products with CQL2</a>.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../" class="btn btn-neutral float-left" title="Overview"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../eumetsat/" class="btn btn-neutral float-right" title="EUMETSAT product search">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/Terradue/osdd2pygeofilter" class="fa fa-code-fork" style="color: #fcfcfc"> Terradue/osdd2pygeofilter</a>
+        </span>
+    
+    
+      <span><a href="../" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../eumetsat/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="../../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

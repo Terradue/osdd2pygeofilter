@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><link rel="canonical" href="https://terradue.github.io/osdd2pygeofilter/tutorials/eumetsat/" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>EUMETSAT product search - OpenSearch to pygeofilter</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../../assets/_mkdocstrings.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "EUMETSAT product search";
+        var mkdocs_page_input_path = "tutorials/eumetsat.md";
+        var mkdocs_page_url = "/osdd2pygeofilter/tutorials/eumetsat/";
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> OpenSearch to pygeofilter
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Tutorials</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../">Overview</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../first-steps/">First evaluator</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">EUMETSAT product search</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#1-generate-the-evaluator">1. Generate the evaluator</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#2-understand-the-service-parameters">2. Understand the service parameters</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#3-write-equivalent-text-and-json-filters">3. Write equivalent text and JSON filters</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#4-invoke-the-service-using-each-representation">4. Invoke the service using each representation</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#5-extract-and-export-the-returned-products">5. Extract and export the returned products</a>
+    </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">How-to guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../how-to/">Overview</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../how-to/install/">Install</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../how-to/use-cli/">Use the CLI</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Reference</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../reference/">Overview</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../reference/cli/">CLI</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../reference/api/">Python API</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Explanation</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../explanation/">Overview</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../explanation/architecture/">Supported queries and limitations</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">OpenSearch to pygeofilter</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Tutorials</li>
+      <li class="breadcrumb-item active">EUMETSAT product search</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/Terradue/osdd2pygeofilter/edit/main/docs/tutorials/eumetsat.md">Edit on Terradue/osdd2pygeofilter</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <!--
+Copyright 2026 Terradue
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
+<h1 id="search-eumetsat-products-with-cql2">Search EUMETSAT products with CQL2<a class="headerlink" href="#search-eumetsat-products-with-cql2" title="Permanent link">&para;</a></h1>
+<p>This walkthrough starts with the live <a href="https://api.eumetsat.int/data/search-products/1.0.0/os">EUMETSAT OpenSearch description</a>
+and builds a small catalogue-search application. You will generate an evaluator,
+express the same search in CQL2 text and JSON, call the service through both
+invocation helpers, and export product identifiers, sensing intervals, and
+links to CSV.</p>
+<p>The example searches the <code>EO:EUM:DAT:MSG:HRSEVIRI</code> collection for Meteosat
+SEVIRI products covering an area around Italy during the first hour of
+1 January 2024 UTC, ordered by sensing start, newest first. The bounding box
+selects overlapping products; it does not crop the satellite data.</p>
+<p>The description and response structure were checked against the live service
+on 10 November 2026. Catalogue contents and availability can change, so the
+examples do not depend on a fixed number of results.</p>
+<h2 id="1-generate-the-evaluator">1. Generate the evaluator<a class="headerlink" href="#1-generate-the-evaluator" title="Permanent link">&para;</a></h2>
+<p><a href="../../how-to/install/">Install osdd2pygeofilter</a>, activate that environment,
+and run these commands in a working directory:</p>
+<div class="highlight"><pre><span></span><code>osdd2pygeofilter<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>https://api.eumetsat.int/data/search-products/1.0.0/os<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output<span class="w"> </span>eumetsat_evaluator.py
+</code></pre></div>
+<p>The CLI retrieves the description and selects its JSON results template. That
+template includes the fixed <code>format=json</code> parameter; you do not need to add it
+to the filter. Generation retrieves metadata only, not products.</p>
+<p>For a reproducible copy of the description, you can instead save it first:</p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>--fail<span class="w"> </span>--location<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>https://api.eumetsat.int/data/search-products/1.0.0/os<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output<span class="w"> </span>eumetsat-osdd.xml
+osdd2pygeofilter<span class="w"> </span>eumetsat-osdd.xml<span class="w"> </span>--output<span class="w"> </span>eumetsat_evaluator.py
+</code></pre></div>
+<p>Keep the generated file beside the application below and use the same Python
+environment to run it. Regenerate when you want to pick up changes to the
+service description.</p>
+<h2 id="2-understand-the-service-parameters">2. Understand the service parameters<a class="headerlink" href="#2-understand-the-service-parameters" title="Permanent link">&para;</a></h2>
+<p>CQL2 property names use the description's placeholder names. The generated
+parameter dictionary and <code>defaults</code> use the corresponding HTTP parameter names:</p>
+<table>
+<thead>
+<tr>
+<th>CQL2 property</th>
+<th>Parameter key</th>
+<th>Purpose in this search</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>eo:parentIdentifier</code></td>
+<td><code>pi</code></td>
+<td>Required collection identifier</td>
+</tr>
+<tr>
+<td><code>time:start</code></td>
+<td><code>dtstart</code></td>
+<td>Beginning of the search time window</td>
+</tr>
+<tr>
+<td><code>time:end</code></td>
+<td><code>dtend</code></td>
+<td>End of the search time window</td>
+</tr>
+<tr>
+<td><code>geo:box</code></td>
+<td><code>bbox</code></td>
+<td>West, south, east, north in longitude/latitude degrees</td>
+</tr>
+<tr>
+<td><code>sru:sortKeys</code></td>
+<td><code>sort</code></td>
+<td><code>start,time,0</code> requests descending sensing-start order</td>
+</tr>
+<tr>
+<td><code>eum:elementSetName</code></td>
+<td><code>set</code></td>
+<td><code>full</code> requests the full metadata element set</td>
+</tr>
+<tr>
+<td><code>count</code></td>
+<td><code>c</code></td>
+<td>Maximum number of records in this response</td>
+</tr>
+</tbody>
+</table>
+<p>The equalities below assign <strong>OpenSearch search parameters</strong>. For example,
+<code>"time:start" = '2024-01-01T00:00:00Z'</code> sets the beginning of the requested time
+window; it does not require every product to start at exactly midnight. The
+service applies the temporal and spatial search semantics.</p>
+<p>Use the actual namespace prefixes from this description, and double-quote
+names containing a colon in CQL2 text. Keep values decoded: the generated
+invocation helper handles URL escaping.</p>
+<h2 id="3-write-equivalent-text-and-json-filters">3. Write equivalent text and JSON filters<a class="headerlink" href="#3-write-equivalent-text-and-json-filters" title="Permanent link">&para;</a></h2>
+<p>Save this JSON document as <code>italy-query.json</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">"op"</span><span class="p">:</span><span class="w"> </span><span class="s2">"and"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"args"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">"op"</span><span class="p">:</span><span class="w"> </span><span class="s2">"="</span><span class="p">,</span><span class="w"> </span><span class="nt">"args"</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">"property"</span><span class="p">:</span><span class="w"> </span><span class="s2">"eo:parentIdentifier"</span><span class="p">},</span><span class="w"> </span><span class="s2">"EO:EUM:DAT:MSG:HRSEVIRI"</span><span class="p">]},</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">"op"</span><span class="p">:</span><span class="w"> </span><span class="s2">"="</span><span class="p">,</span><span class="w"> </span><span class="nt">"args"</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">"property"</span><span class="p">:</span><span class="w"> </span><span class="s2">"time:start"</span><span class="p">},</span><span class="w"> </span><span class="s2">"2024-01-01T00:00:00Z"</span><span class="p">]},</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">"op"</span><span class="p">:</span><span class="w"> </span><span class="s2">"="</span><span class="p">,</span><span class="w"> </span><span class="nt">"args"</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">"property"</span><span class="p">:</span><span class="w"> </span><span class="s2">"time:end"</span><span class="p">},</span><span class="w"> </span><span class="s2">"2024-01-01T01:00:00Z"</span><span class="p">]},</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">"op"</span><span class="p">:</span><span class="w"> </span><span class="s2">"="</span><span class="p">,</span><span class="w"> </span><span class="nt">"args"</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">"property"</span><span class="p">:</span><span class="w"> </span><span class="s2">"geo:box"</span><span class="p">},</span><span class="w"> </span><span class="s2">"5,35,20,48"</span><span class="p">]},</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">"op"</span><span class="p">:</span><span class="w"> </span><span class="s2">"="</span><span class="p">,</span><span class="w"> </span><span class="nt">"args"</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">"property"</span><span class="p">:</span><span class="w"> </span><span class="s2">"sru:sortKeys"</span><span class="p">},</span><span class="w"> </span><span class="s2">"start,time,0"</span><span class="p">]},</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">"op"</span><span class="p">:</span><span class="w"> </span><span class="s2">"="</span><span class="p">,</span><span class="w"> </span><span class="nt">"args"</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">"property"</span><span class="p">:</span><span class="w"> </span><span class="s2">"eum:elementSetName"</span><span class="p">},</span><span class="w"> </span><span class="s2">"full"</span><span class="p">]}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Create <code>search_eumetsat.py</code>, starting with the following code. Append the Python
+blocks in the next two sections to the same file.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">csv</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">eumetsat_evaluator</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">from_cql2_json</span><span class="p">,</span>
+    <span class="n">from_cql2_text</span><span class="p">,</span>
+    <span class="n">invoke_from_cql2_json</span><span class="p">,</span>
+    <span class="n">invoke_from_cql2_text</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">query_text</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s1">'"eo:parentIdentifier" = </span><span class="se">\'</span><span class="s1">EO:EUM:DAT:MSG:HRSEVIRI</span><span class="se">\'</span><span class="s1">'</span>
+    <span class="s1">' AND "time:start" = </span><span class="se">\'</span><span class="s1">2024-01-01T00:00:00Z</span><span class="se">\'</span><span class="s1">'</span>
+    <span class="s1">' AND "time:end" = </span><span class="se">\'</span><span class="s1">2024-01-01T01:00:00Z</span><span class="se">\'</span><span class="s1">'</span>
+    <span class="s1">' AND "geo:box" = </span><span class="se">\'</span><span class="s1">5,35,20,48</span><span class="se">\'</span><span class="s1">'</span>
+    <span class="s1">' AND "sru:sortKeys" = </span><span class="se">\'</span><span class="s1">start,time,0</span><span class="se">\'</span><span class="s1">'</span>
+    <span class="s1">' AND "eum:elementSetName" = </span><span class="se">\'</span><span class="s1">full</span><span class="se">\'</span><span class="s1">'</span>
+<span class="p">)</span>
+<span class="n">query_json</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">"italy-query.json"</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span>
+<span class="n">defaults</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"c"</span><span class="p">:</span> <span class="s2">"5"</span><span class="p">}</span>
+
+<span class="n">text_parameters</span> <span class="o">=</span> <span class="n">from_cql2_text</span><span class="p">(</span><span class="n">query_text</span><span class="p">)</span>
+<span class="n">json_parameters</span> <span class="o">=</span> <span class="n">from_cql2_json</span><span class="p">(</span><span class="n">query_json</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">text_parameters</span> <span class="o">!=</span> <span class="n">json_parameters</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"The text and JSON filters must describe the same search"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">text_parameters</span><span class="p">)</span>
+</code></pre></div>
+<p>Adjacent Python string literals produce one line of CQL2, with spaces before
+<code>AND</code>. The JSON helper accepts a serialized JSON string as above, or a dictionary.
+Neither <code>from_cql2_*</code> function makes an HTTP request. Both produce:</p>
+<div class="highlight"><pre><span></span><code>{'pi': 'EO:EUM:DAT:MSG:HRSEVIRI', 'dtstart': '2024-01-01T00:00:00Z', 'dtend': '2024-01-01T01:00:00Z', 'bbox': '5,35,20,48', 'sort': 'start,time,0', 'set': 'full'}
+</code></pre></div>
+<p>You may see a warning for <code>start,time,0</code>: the description lists <code>start,time</code>
+as a suggested value, while its option label explicitly explains the descending
+form. Options are not a closed enum, so the warning does not prevent the search.
+Collection identifiers are also advertised as suggestions in
+<code>PARAMETER_OPTIONS["pi"]</code> in the generated module.</p>
+<h2 id="4-invoke-the-service-using-each-representation">4. Invoke the service using each representation<a class="headerlink" href="#4-invoke-the-service-using-each-representation" title="Permanent link">&para;</a></h2>
+<p>Append:</p>
+<div class="highlight"><pre><span></span><code><span class="n">response_text</span> <span class="o">=</span> <span class="n">invoke_from_cql2_text</span><span class="p">(</span><span class="n">query_text</span><span class="p">,</span> <span class="n">defaults</span><span class="o">=</span><span class="n">defaults</span><span class="p">)</span>
+<span class="n">response_json</span> <span class="o">=</span> <span class="n">invoke_from_cql2_json</span><span class="p">(</span><span class="n">query_json</span><span class="p">,</span> <span class="n">defaults</span><span class="o">=</span><span class="n">defaults</span><span class="p">)</span>
+
+<span class="n">Path</span><span class="p">(</span><span class="s2">"eumetsat-text-results.json"</span><span class="p">)</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span>
+    <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">response_text</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">),</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span>
+<span class="p">)</span>
+<span class="n">Path</span><span class="p">(</span><span class="s2">"eumetsat-json-results.json"</span><span class="p">)</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span>
+    <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">response_json</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">),</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>Each invocation converts its filter, merges defaults, validates the complete
+parameter set, expands the original URL template, and performs an HTTP request
+with a 30-second timeout. This example deliberately makes <strong>two searches</strong> to
+demonstrate both entry points; applications normally choose one representation.
+Filter assignments override defaults. The <code>c</code> default limits the response to
+five records; the current description permits values up to 500.</p>
+<p>The return value is decoded JSON, not a <code>requests.Response</code>, so do not call
+<code>.json()</code> on it. The service returns a <code>FeatureCollection</code> with top-level
+<code>totalResults</code> and <code>features</code>. These are separate live responses: metadata such
+as the update time can differ even when their filters are equivalent.</p>
+<p>The generated functions raise <code>ValueError</code> for invalid parameters and propagate
+HTTP and connection errors from Requests. No product downloads occur here.</p>
+<h2 id="5-extract-and-export-the-returned-products">5. Extract and export the returned products<a class="headerlink" href="#5-extract-and-export-the-returned-products" title="Permanent link">&para;</a></h2>
+<p>Append this final block. It checks the response shape, extracts identifiers and
+sensing intervals, orders the returned rows chronologically, and writes a CSV
+containing the advertised product links:</p>
+<div class="highlight"><pre><span></span><code><span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">response_text</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">or</span> <span class="n">response_text</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"type"</span><span class="p">)</span> <span class="o">!=</span> <span class="s2">"FeatureCollection"</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Expected an EUMETSAT FeatureCollection"</span><span class="p">)</span>
+<span class="n">features</span> <span class="o">=</span> <span class="n">response_text</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"features"</span><span class="p">)</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Expected a features array"</span><span class="p">)</span>
+
+<span class="n">rows</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">feature</span> <span class="ow">in</span> <span class="n">features</span><span class="p">:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">feature</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Expected a product object"</span><span class="p">)</span>
+    <span class="n">identifier</span> <span class="o">=</span> <span class="n">feature</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"id"</span><span class="p">)</span>
+    <span class="n">properties</span> <span class="o">=</span> <span class="n">feature</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"properties"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">identifier</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">properties</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Expected a product identifier and properties"</span><span class="p">)</span>
+    <span class="n">interval</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"date"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">interval</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Expected a sensing interval"</span><span class="p">)</span>
+
+    <span class="n">links</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"links"</span><span class="p">)</span>
+    <span class="n">data_links</span> <span class="o">=</span> <span class="n">links</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"data"</span><span class="p">,</span> <span class="p">[])</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">links</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="p">[]</span>
+    <span class="n">download_url</span> <span class="o">=</span> <span class="s2">""</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data_links</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">link</span> <span class="ow">in</span> <span class="n">data_links</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">link</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="n">href</span> <span class="o">=</span> <span class="n">link</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"href"</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">href</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                    <span class="n">download_url</span> <span class="o">=</span> <span class="n">href</span>
+                    <span class="k">break</span>
+    <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">identifier</span><span class="p">,</span> <span class="n">interval</span><span class="p">,</span> <span class="n">download_url</span><span class="p">))</span>
+
+<span class="n">rows</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">row</span><span class="p">:</span> <span class="n">row</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+<span class="k">with</span> <span class="n">Path</span><span class="p">(</span><span class="s2">"eumetsat-products.csv"</span><span class="p">)</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">"w"</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">,</span> <span class="n">newline</span><span class="o">=</span><span class="s2">""</span><span class="p">)</span> <span class="k">as</span> <span class="n">output</span><span class="p">:</span>
+    <span class="n">writer</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">writer</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+    <span class="n">writer</span><span class="o">.</span><span class="n">writerow</span><span class="p">((</span><span class="s2">"product_id"</span><span class="p">,</span> <span class="s2">"sensing_interval"</span><span class="p">,</span> <span class="s2">"download_url"</span><span class="p">))</span>
+    <span class="n">writer</span><span class="o">.</span><span class="n">writerows</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Matched: </span><span class="si">{</span><span class="n">response_text</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'totalResults'</span><span class="p">)</span><span class="si">}</span><span class="s2">; returned: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">features</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">identifier</span><span class="p">,</span> <span class="n">interval</span><span class="p">,</span> <span class="n">_download_url</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">interval</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">identifier</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Saved eumetsat-products.csv"</span><span class="p">)</span>
+</code></pre></div>
+<p>Run the completed application from the directory containing all three files:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>search_eumetsat.py
+</code></pre></div>
+<p><code>properties.date</code> contains a <code>start/end</code> sensing interval, rather than a single
+timestamp. Product download links are under <code>properties.links.data</code>, not a
+STAC <code>assets</code> object. The CSV leaves the link empty if none is advertised.
+It only records links; downloading products is a separate workflow that may
+require EUMETSAT authorization.</p>
+<p>This exports <strong>one response page</strong>, not necessarily the entire matching
+catalogue. <code>totalResults</code> describes all matches, while <code>len(features)</code> describes
+this page. An empty result still produces a CSV header and saves both JSON
+responses. To adapt the search, change the collection, time window, or bounding
+box in both representations and keep the parameter-equivalence check.</p>
+<p>For supported spatial predicates and other conversion rules, see
+<a href="../../explanation/architecture/">Supported queries</a>. For invocation signatures
+and encoding behavior, see the <a href="../../reference/api/">Python API</a>.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../first-steps/" class="btn btn-neutral float-left" title="First evaluator"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../../how-to/" class="btn btn-neutral float-right" title="Overview">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/Terradue/osdd2pygeofilter" class="fa fa-code-fork" style="color: #fcfcfc"> Terradue/osdd2pygeofilter</a>
+        </span>
+    
+    
+      <span><a href="../first-steps/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../../how-to/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="../../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

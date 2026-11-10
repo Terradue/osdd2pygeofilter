@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><link rel="canonical" href="https://terradue.github.io/osdd2pygeofilter/reference/api/" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Python API - OpenSearch to pygeofilter</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../../assets/_mkdocstrings.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Python API";
+        var mkdocs_page_input_path = "reference/api.md";
+        var mkdocs_page_url = "/osdd2pygeofilter/reference/api/";
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> OpenSearch to pygeofilter
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Tutorials</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../tutorials/">Overview</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../tutorials/first-steps/">First evaluator</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../tutorials/eumetsat/">EUMETSAT product search</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">How-to guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../how-to/">Overview</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../how-to/install/">Install</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../how-to/use-cli/">Use the CLI</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Reference</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../">Overview</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../cli/">CLI</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Python API</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#generated-api">Generated API</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#osdd2pygeofilter.converter">converter</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#osdd2pygeofilter.converter.convert">convert</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#osdd2pygeofilter.converter.render_evaluator">render_evaluator</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#generated-source-quality">Generated source quality</a>
+    </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Explanation</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../explanation/">Overview</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../explanation/architecture/">Supported queries and limitations</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">OpenSearch to pygeofilter</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Reference</li>
+      <li class="breadcrumb-item active">Python API</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/Terradue/osdd2pygeofilter/edit/main/docs/reference/api.md">Edit on Terradue/osdd2pygeofilter</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <!--
+Copyright 2026 Terradue
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
+<h1 id="api-reference">API reference<a class="headerlink" href="#api-reference" title="Permanent link">&para;</a></h1>
+<p><code>convert(service, target, *, url_index=0)</code> accepts an
+<code>lxml.etree._Element</code> root element and a <code>pathlib.Path</code>. It validates and
+renders the evaluator before creating parent directories and replacing the
+output. It returns the target path. <code>render_evaluator(service, *, url_index=0)</code>
+returns the same Python source without writing it.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">lxml</span><span class="w"> </span><span class="kn">import</span> <span class="n">etree</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">osdd2pygeofilter.converter</span><span class="w"> </span><span class="kn">import</span> <span class="n">convert</span>
+
+<span class="n">parser</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">XMLParser</span><span class="p">(</span><span class="n">resolve_entities</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">load_dtd</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">no_network</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">service</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="s2">"opensearch.xml"</span><span class="p">,</span> <span class="n">parser</span><span class="p">)</span><span class="o">.</span><span class="n">getroot</span><span class="p">()</span>
+<span class="n">convert</span><span class="p">(</span><span class="n">service</span><span class="p">,</span> <span class="n">Path</span><span class="p">(</span><span class="s2">"generated_search.py"</span><span class="p">))</span>
+</code></pre></div>
+<p>Only <code>Url</code> elements with <code>type="application/json"</code> and a results relation
+(including the default relation) are eligible. <code>url_index</code> selects among these
+URLs in document order. No requests are made during conversion.</p>
+<h2 id="generated-api">Generated API<a class="headerlink" href="#generated-api" title="Permanent link">&para;</a></h2>
+<p>The module contains <code>OpenSearchEvaluator(Evaluator)</code> and these convenience APIs:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">generated_search</span><span class="w"> </span><span class="kn">import</span> <span class="n">from_cql2_text</span><span class="p">,</span> <span class="n">from_cql2_json</span>
+
+<span class="c1"># For a template https://example.test/search?q={searchTerms}&amp;limit={count?}</span>
+<span class="n">query</span> <span class="o">=</span> <span class="n">from_cql2_text</span><span class="p">(</span><span class="s2">"searchTerms = 'ocean &amp; ice' AND count = 10"</span><span class="p">)</span>
+<span class="k">assert</span> <span class="n">query</span> <span class="o">==</span> <span class="p">{</span><span class="s2">"q"</span><span class="p">:</span> <span class="s2">"ocean &amp; ice"</span><span class="p">,</span> <span class="s2">"limit"</span><span class="p">:</span> <span class="s2">"10"</span><span class="p">}</span>
+<span class="n">query</span> <span class="o">=</span> <span class="n">from_cql2_json</span><span class="p">(</span><span class="s1">'{"op":"=","args":[{"property":"searchTerms"},"ice"]}'</span><span class="p">)</span>
+</code></pre></div>
+<p><code>to_opensearch(root)</code> accepts an existing pygeofilter AST. Query conversion
+functions return decoded filter parameters without making a request. They accept
+<code>attribute_map</code>, mapping application property names to placeholder QNames.
+Each evaluation is independent.</p>
+<p><code>invoke(parameters, defaults=None)</code> merges decoded defaults with supplied
+parameters and validates them. It expands the original <code>URL_TEMPLATE</code> in place
+and passes the resulting URL to <code>requests.request(METHOD, url, timeout=30)</code> with a 30-second timeout, without
+a separate <code>params</code> argument. Filter assignments override defaults; fixed
+template values cannot be changed. It raises for HTTP errors and returns the
+response's decoded JSON. <code>invoke_from_cql2_text</code> and <code>invoke_from_cql2_json</code>
+combine conversion and invocation:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">generated_search</span><span class="w"> </span><span class="kn">import</span> <span class="n">invoke_from_cql2_text</span>
+
+<span class="n">response</span> <span class="o">=</span> <span class="n">invoke_from_cql2_text</span><span class="p">(</span>
+    <span class="s2">"text = 'ice'"</span><span class="p">,</span>
+    <span class="n">attribute_map</span><span class="o">=</span><span class="p">{</span><span class="s2">"text"</span><span class="p">:</span> <span class="s2">"searchTerms"</span><span class="p">},</span>
+    <span class="n">defaults</span><span class="o">=</span><span class="p">{</span><span class="s2">"limit"</span><span class="p">:</span> <span class="s2">"10"</span><span class="p">},</span>
+<span class="p">)</span>
+</code></pre></div>
+<p><code>URL_TEMPLATE</code> preserves the selected OSDD <code>Url/@template</code> exactly as read from
+XML. Each <code>{name}</code> or <code>{prefix:name?}</code> occurrence is replaced with its
+percent-encoded value. Optional values that are absent become empty strings;
+required values must be supplied. Literal paths, separators, fixed query values,
+existing escapes, repeated keys, and fragments are preserved during expansion.
+The HTTP client may subsequently normalize the URL for transport and does not
+send fragment identifiers to the server.</p>
+<p>Whole query-value placeholders retain their query-name aliases (<code>q={searchTerms}</code>
+uses <code>q</code> in the parameter dictionary). A matching Parameter declaration's <code>name</code>
+takes precedence. For path, composite, or ambiguous repeated query bindings,
+the placeholder QName is the default dictionary key. For example,
+<code>/catalog/{eo:platform}/search/{searchTerms}</code> accepts <code>eo:platform</code> and
+<code>searchTerms</code>, unless Parameter declarations give them other names. Repeated
+occurrences of a placeholder share a value; any required occurrence makes the
+value required. These are OpenSearch placeholders, not RFC 6570 expressions
+such as <code>{?q,count}</code>. At invocation, a small adapter maps OpenSearch
+placeholders to temporary RFC 6570 variable names. <code>URITemplate</code> performs the
+actual expansion and UTF-8 percent encoding; other input encodings use
+<code>urllib.parse.quote</code> before reserved expansion to preserve encoded escapes.
+<code>URL_TEMPLATE</code> itself stays unchanged.</p>
+<p><code>METHOD</code> comes from the selected URL’s <code>method</code> or Parameters-extension
+<code>p:method</code> attribute and defaults to <code>GET</code>. Invocation sends the expanded URL
+with that method; it does not construct a request body.</p>
+<p>Input and output encodings use the explicit parameter value, then the first
+concrete <code>InputEncoding</code> or <code>OutputEncoding</code> declaration, then UTF-8. Encoding
+placeholders are populated with this selection when omitted. Codec aliases are
+accepted when they match an advertised encoding. Input encoding controls URL
+value percent encoding; output encoding controls JSON response decoding unless
+the response declares an HTTP charset, which takes precedence. Unknown codecs
+and input characters that cannot be encoded fail before a request is sent.</p>
+<p>Quote extension property names in CQL2 text, for example
+<code>"eo:cloudCover" &lt; 20</code>. Use <code>attribute_map</code> to expose names such as <code>cloud_cover</code>.
+The prefix must match the description's placeholder; its meaning is resolved
+using the XML namespace URI, including declarations scoped to a URL.</p>
+<p>The generated module requires <code>pygeofilter</code>, <code>pygeoif</code> (also a dependency
+of pygeofilter), <code>requests</code>, and <code>uritemplate</code>. It does not import <code>osdd2pygeofilter</code>, Jinja2,
+or lxml at runtime. The generator embeds the validation definitions from its
+canonical validation source alongside the Jinja2-rendered handlers. Validation
+fixes take effect in existing modules when you regenerate them.</p>
+<p><code>PARAMETER_OPTIONS</code> maps HTTP query parameter names to tuples of suggested
+values, for example <code>{"platform": ("Sentinel-1", "Sentinel-2")}</code>. Option labels
+are omitted. Options alone do not restrict accepted values or imply an enum.</p>
+<p>Whenever a handler assigns a parameter value absent from its advertised tuple,
+it immediately emits a <code>WARNING</code> log record. Listed values, absent
+parameters, and parameters without options produce no warning. Comparison uses
+the complete decoded value, including any range, set, or sort syntax.
+Repeated assignments are checked separately. Computed interval intersections
+and spatial relation assignments are also checked; copying already checked
+values while merging predicates does not add warnings. Warnings can therefore
+be emitted even when a later part of the expression fails. The value remains
+unchanged and can be submitted by the invocation helpers.
+Patterns and standard-defined enumerations are still validated at invocation.</p>
+<p>Warnings use Python's standard <code>logging</code> module, under the generated module's
+name. Applications can configure handlers and levels normally; the generated
+module does not configure logging. Defaults supplied only to <code>invoke</code> are not
+part of evaluator option checks.</p>
+<p>The converter reads namespace scopes, URL offsets and constraint attributes
+directly from the lxml tree. Pass the OpenSearchDescription root element, using
+<code>.getroot()</code> when loading an ElementTree. The CLI parses XML with entity
+resolution, DTD loading and network access disabled. Programmatic callers are
+responsible for their parser configuration.</p>
+<p>See <a href="../../explanation/architecture/">supported queries and constraints</a> for
+translation limits. Unsupported predicates raise <code>NotImplementedError</code>; invalid
+values, missing required parameters and conflicting assignments raise
+<code>ValueError</code>.</p>
+
+
+<div class="doc doc-object doc-module">
+
+
+
+<a id="osdd2pygeofilter.converter"></a>
+    <div class="doc doc-contents first">
+
+        <p>Compile an lxml OpenSearch description into a service-specific evaluator.</p>
+<p>Only JSON results URLs are eligible. Compilation does not contact the service.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="osdd2pygeofilter.converter.convert" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">convert</span><span class="p">(</span><span class="n">service</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">url_index</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span></code>
+
+<a href="#osdd2pygeofilter.converter.convert" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Write a generated evaluator, creating parents and replacing the target.</p>
+<p>Validation and rendering finish before the target is opened. The generated
+module embeds its validators and requires pygeofilter, pygeoif, requests,
+and uritemplate at runtime, without importing osdd2pygeofilter.</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>service</code></b>
+                  (<code><span title="lxml.etree._Element">_Element</span></code>)
+              –
+              <div class="doc-md-description">
+                <p>Parsed lxml OpenSearchDescription root element.</p>
+              </div>
+            </li>
+            <li>
+              <b><code>target</code></b>
+                  (<code><span title="pathlib.Path">Path</span></code>)
+              –
+              <div class="doc-md-description">
+                <p>Python module to create or replace.</p>
+              </div>
+            </li>
+            <li>
+              <b><code>url_index</code></b>
+                  (<code><span title="int">int</span></code>, default:
+                      <code>0</code>
+)
+              –
+              <div class="doc-md-description">
+                <p>Zero-based index among application/json results URLs.</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code><span title="pathlib.Path">Path</span></code>
+              –
+              <div class="doc-md-description">
+                <p>The target path.</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Raises:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code><span title="ValueError">ValueError</span></code>
+              –
+              <div class="doc-md-description">
+                <p>If the selected description cannot be compiled.</p>
+              </div>
+            </li>
+            <li>
+                  <code><span title="OSError">OSError</span></code>
+              –
+              <div class="doc-md-description">
+                <p>If the destination cannot be written.</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/osdd2pygeofilter/converter.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">254</span>
+<span class="normal">255</span>
+<span class="normal">256</span>
+<span class="normal">257</span>
+<span class="normal">258</span>
+<span class="normal">259</span>
+<span class="normal">260</span>
+<span class="normal">261</span>
+<span class="normal">262</span>
+<span class="normal">263</span>
+<span class="normal">264</span>
+<span class="normal">265</span>
+<span class="normal">266</span>
+<span class="normal">267</span>
+<span class="normal">268</span>
+<span class="normal">269</span>
+<span class="normal">270</span>
+<span class="normal">271</span>
+<span class="normal">272</span>
+<span class="normal">273</span>
+<span class="normal">274</span>
+<span class="normal">275</span>
+<span class="normal">276</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">convert</span><span class="p">(</span><span class="n">service</span><span class="p">:</span> <span class="n">_Element</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">url_index</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Write a generated evaluator, creating parents and replacing the target.</span>
+
+<span class="sd">    Validation and rendering finish before the target is opened. The generated</span>
+<span class="sd">    module embeds its validators and requires pygeofilter, pygeoif, requests,</span>
+<span class="sd">    and uritemplate at runtime, without importing osdd2pygeofilter.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        service: Parsed lxml OpenSearchDescription root element.</span>
+<span class="sd">        target: Python module to create or replace.</span>
+<span class="sd">        url_index: Zero-based index among application/json results URLs.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The target path.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If the selected description cannot be compiled.</span>
+<span class="sd">        OSError: If the destination cannot be written.</span>
+<span class="sd">    """</span>
+    <span class="n">source</span> <span class="o">=</span> <span class="n">render_evaluator</span><span class="p">(</span><span class="n">service</span><span class="p">,</span> <span class="n">url_index</span><span class="o">=</span><span class="n">url_index</span><span class="p">)</span>
+    <span class="n">target</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">target</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">target</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="osdd2pygeofilter.converter.render_evaluator" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">render_evaluator</span><span class="p">(</span><span class="n">service</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">url_index</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span></code>
+
+<a href="#osdd2pygeofilter.converter.render_evaluator" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Render Python source for a JSON results endpoint without writing files.</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>service</code></b>
+                  (<code><span title="lxml.etree._Element">_Element</span></code>)
+              –
+              <div class="doc-md-description">
+                <p>Parsed lxml OpenSearchDescription root element.</p>
+              </div>
+            </li>
+            <li>
+              <b><code>url_index</code></b>
+                  (<code><span title="int">int</span></code>, default:
+                      <code>0</code>
+)
+              –
+              <div class="doc-md-description">
+                <p>Zero-based index among application/json results URLs.</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Raises:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code><span title="ValueError">ValueError</span></code>
+              –
+              <div class="doc-md-description">
+                <p>If the URL or its parameter declarations cannot be compiled.</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/osdd2pygeofilter/converter.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">203</span>
+<span class="normal">204</span>
+<span class="normal">205</span>
+<span class="normal">206</span>
+<span class="normal">207</span>
+<span class="normal">208</span>
+<span class="normal">209</span>
+<span class="normal">210</span>
+<span class="normal">211</span>
+<span class="normal">212</span>
+<span class="normal">213</span>
+<span class="normal">214</span>
+<span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span>
+<span class="normal">225</span>
+<span class="normal">226</span>
+<span class="normal">227</span>
+<span class="normal">228</span>
+<span class="normal">229</span>
+<span class="normal">230</span>
+<span class="normal">231</span>
+<span class="normal">232</span>
+<span class="normal">233</span>
+<span class="normal">234</span>
+<span class="normal">235</span>
+<span class="normal">236</span>
+<span class="normal">237</span>
+<span class="normal">238</span>
+<span class="normal">239</span>
+<span class="normal">240</span>
+<span class="normal">241</span>
+<span class="normal">242</span>
+<span class="normal">243</span>
+<span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span>
+<span class="normal">247</span>
+<span class="normal">248</span>
+<span class="normal">249</span>
+<span class="normal">250</span>
+<span class="normal">251</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">render_evaluator</span><span class="p">(</span><span class="n">service</span><span class="p">:</span> <span class="n">_Element</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">url_index</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Render Python source for a JSON results endpoint without writing files.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        service: Parsed lxml OpenSearchDescription root element.</span>
+<span class="sd">        url_index: Zero-based index among application/json results URLs.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If the URL or its parameter declarations cannot be compiled.</span>
+<span class="sd">    """</span>
+    <span class="n">root</span> <span class="o">=</span> <span class="n">service</span>
+    <span class="k">if</span> <span class="n">root</span><span class="o">.</span><span class="n">tag</span> <span class="o">!=</span> <span class="sa">f</span><span class="s2">"</span><span class="se">{{</span><span class="si">{</span><span class="n">CORE</span><span class="si">}</span><span class="se">}}</span><span class="s2">OpenSearchDescription"</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Expected an OpenSearch 1.1 OpenSearchDescription root"</span><span class="p">)</span>
+    <span class="n">element</span> <span class="o">=</span> <span class="n">_select_url</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">url_index</span><span class="p">)</span>
+    <span class="n">uri</span><span class="p">,</span> <span class="n">bindings</span><span class="p">,</span> <span class="n">fixed</span> <span class="o">=</span> <span class="n">_compile_url</span><span class="p">(</span><span class="n">element</span><span class="p">)</span>
+    <span class="n">declarations</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">name</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">text</span> <span class="ow">or</span> <span class="s2">""</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">root</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">{{</span><span class="si">{</span><span class="n">CORE</span><span class="si">}</span><span class="se">}}</span><span class="si">{</span><span class="n">tag</span><span class="si">}</span><span class="s2">"</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">tag</span> <span class="ow">in</span> <span class="p">(</span>
+            <span class="p">(</span><span class="s2">"language"</span><span class="p">,</span> <span class="s2">"Language"</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">"inputEncoding"</span><span class="p">,</span> <span class="s2">"InputEncoding"</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">"outputEncoding"</span><span class="p">,</span> <span class="s2">"OutputEncoding"</span><span class="p">),</span>
+        <span class="p">)</span>
+    <span class="p">}</span>
+    <span class="n">environment</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">(</span>
+        <span class="n">loader</span><span class="o">=</span><span class="n">PackageLoader</span><span class="p">(</span><span class="s2">"osdd2pygeofilter"</span><span class="p">,</span> <span class="s2">"templates"</span><span class="p">),</span>
+        <span class="n">undefined</span><span class="o">=</span><span class="n">StrictUndefined</span><span class="p">,</span>
+        <span class="n">autoescape</span><span class="o">=</span><span class="n">select_autoescape</span><span class="p">(),</span>
+        <span class="n">keep_trailing_newline</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">trim_blocks</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">lstrip_blocks</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">environment</span><span class="o">.</span><span class="n">filters</span><span class="p">[</span><span class="s2">"python"</span><span class="p">]</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">environment</span><span class="o">.</span><span class="n">get_template</span><span class="p">(</span><span class="s2">"evaluator.py.j2"</span><span class="p">)</span><span class="o">.</span><span class="n">render</span><span class="p">(</span>
+        <span class="n">validation_source</span><span class="o">=</span><span class="n">_validation_source</span><span class="p">(),</span>
+        <span class="n">uri</span><span class="o">=</span><span class="n">uri</span><span class="p">,</span>
+        <span class="n">method</span><span class="o">=</span><span class="n">_http_method</span><span class="p">(</span><span class="n">element</span><span class="p">),</span>
+        <span class="n">bindings</span><span class="o">=</span><span class="n">bindings</span><span class="p">,</span>
+        <span class="n">fixed</span><span class="o">=</span><span class="n">fixed</span><span class="p">,</span>
+        <span class="n">parameter_options</span><span class="o">=</span><span class="p">{</span>
+            <span class="n">parameter</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"name"</span><span class="p">):</span> <span class="nb">tuple</span><span class="p">(</span>
+                <span class="n">option</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"value"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span> <span class="k">for</span> <span class="n">option</span> <span class="ow">in</span> <span class="n">parameter</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">{{</span><span class="si">{</span><span class="n">PARAMETERS</span><span class="si">}</span><span class="se">}}</span><span class="s2">Option"</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">parameter</span> <span class="ow">in</span> <span class="n">element</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">{{</span><span class="si">{</span><span class="n">PARAMETERS</span><span class="si">}</span><span class="se">}}</span><span class="s2">Parameter"</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">parameter</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">{{</span><span class="si">{</span><span class="n">PARAMETERS</span><span class="si">}</span><span class="se">}}</span><span class="s2">Option"</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="p">},</span>
+        <span class="n">declarations</span><span class="o">=</span><span class="n">declarations</span><span class="p">,</span>
+        <span class="n">index_offset</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">element</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"indexOffset"</span><span class="p">,</span> <span class="s2">"1"</span><span class="p">)),</span>
+        <span class="n">page_offset</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">element</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"pageOffset"</span><span class="p">,</span> <span class="s2">"1"</span><span class="p">)),</span>
+    <span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div><h2 id="generated-source-quality">Generated source quality<a class="headerlink" href="#generated-source-quality" title="Permanent link">&para;</a></h2>
+<p>Generated modules are formatted for the project's 100-column Ruff configuration
+and checked with its strict mypy and Bandit settings. Run
+<code>hatch run dev:generated-check</code> to verify representative outputs, including
+empty bindings, empty metadata maps, and escaped option values. This check is
+included in the development quality and check commands.</p>
+<p>The emitted source has typed parameter metadata and a recursive <code>JSONValue</code>
+alias for decoded JSON responses (objects, arrays, scalars, or null). The alias
+expresses JSON syntax, not a service-specific response schema. Invocation
+validates values returned across the HTTP client's untyped JSON boundary.</p>
+<p>Pygeofilter 0.4.0 does not ship a <code>py.typed</code> marker. The template documents narrow
+<code>import-untyped</code> exceptions for its imports and a <code>misc</code> exception for inheriting
+its untyped evaluator. A typed handler-registration adapter preserves method
+signatures; evaluator results are checked before exposing parameter dictionaries.
+<code>@_handle</code> calls the original <code>handle</code> decorator to register each function, then
+returns that same function with its generic callable type preserved. The leading
+underscore marks this as an internal helper; it does not change dispatch behavior.
+Using the untyped upstream decorator directly would erase handler signatures
+and trigger strict mypy's <code>untyped-decorator</code> errors.
+No host-wide mypy override is needed. Revisit these dependency exceptions when
+upgrading to a pygeofilter release that publishes typing metadata.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../cli/" class="btn btn-neutral float-left" title="CLI"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../../explanation/" class="btn btn-neutral float-right" title="Overview">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/Terradue/osdd2pygeofilter" class="fa fa-code-fork" style="color: #fcfcfc"> Terradue/osdd2pygeofilter</a>
+        </span>
+    
+    
+      <span><a href="../cli/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../../explanation/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="../../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

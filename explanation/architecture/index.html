@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><link rel="canonical" href="https://terradue.github.io/osdd2pygeofilter/explanation/architecture/" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Supported queries and limitations - OpenSearch to pygeofilter</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../../assets/_mkdocstrings.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Supported queries and limitations";
+        var mkdocs_page_input_path = "explanation/architecture.md";
+        var mkdocs_page_url = "/osdd2pygeofilter/explanation/architecture/";
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> OpenSearch to pygeofilter
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Tutorials</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../tutorials/">Overview</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../tutorials/first-steps/">First evaluator</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../tutorials/eumetsat/">EUMETSAT product search</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">How-to guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../how-to/">Overview</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../how-to/install/">Install</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../how-to/use-cli/">Use the CLI</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Reference</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../reference/">Overview</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../reference/cli/">CLI</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../reference/api/">Python API</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Explanation</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../">Overview</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Supported queries and limitations</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#cql2-translation">CQL2 translation</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#validation">Validation</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#advertised-options">Advertised options</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#specification-sources">Specification sources</a>
+    </li>
+    </ul>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">OpenSearch to pygeofilter</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Explanation</li>
+      <li class="breadcrumb-item active">Supported queries and limitations</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/Terradue/osdd2pygeofilter/edit/main/docs/explanation/architecture.md">Edit on Terradue/osdd2pygeofilter</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <!--
+Copyright 2026 Terradue
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
+<h1 id="supported-queries-and-validation">Supported queries and validation<a class="headerlink" href="#supported-queries-and-validation" title="Permanent link">&para;</a></h1>
+<p>The generator compiles a JSON results URL from an lxml OpenSearchDescription root element.
+Jinja2 emits a pygeofilter evaluator with embedded validation definitions;
+<code>invoke</code> expands the original OpenSearch URL template and sends that URL through <code>requests</code>. The generated module runs without the
+<code>osdd2pygeofilter</code> package, Jinja2, or lxml. Regenerate it to pick up changes
+to validation rules.
+Only advertised placeholders are exposed as properties. Query names may differ
+from those properties: <code>q={searchTerms}</code> maps <code>searchTerms</code> to <code>q</code>.</p>
+<h2 id="cql2-translation">CQL2 translation<a class="headerlink" href="#cql2-translation" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Expression</th>
+<th>Translation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Scalar equality, including reversed operands</td>
+<td>Parameter assignment</td>
+</tr>
+<tr>
+<td><code>AND</code></td>
+<td>Combine assignments; reject conflicts</td>
+</tr>
+<tr>
+<td>EO numeric/date <code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code>, <code>&gt;=</code></td>
+<td>EO one-sided interval notation</td>
+</tr>
+<tr>
+<td>EO numeric/date <code>BETWEEN</code> / <code>IN</code></td>
+<td>Inclusive interval / set notation</td>
+</tr>
+<tr>
+<td>Conjunction of EO intervals</td>
+<td>Intersect bounds; reject an empty intersection</td>
+</tr>
+<tr>
+<td><code>S_INTERSECTS</code> on a <code>geo:geometry</code> property</td>
+<td>Exact WKT and <code>geo:relation=intersects</code> when advertised</td>
+</tr>
+</tbody>
+</table>
+<p>Dates and timestamps use ISO serialization; booleans use <code>true</code> or <code>false</code>.
+Identical assignments are deduplicated. Spatial predicates never approximate a
+geometry by its bounding box. A bounding box can be assigned directly to the
+advertised <code>geo:box</code> property.</p>
+<p>OpenSearch descriptions do not define a universal translation for arbitrary
+CQL2. <code>OR</code>, <code>NOT</code>, null predicates, arithmetic, functions, general temporal
+predicates, and comparisons on parameters without an EO range contract fail
+explicitly. Time filters can assign RFC 3339 values to <code>time:start</code> and
+<code>time:end</code>; these are overlap search bounds, not a general implementation of
+CQL2 temporal relations. Distinct scalar/set assignments to the same parameter
+are rejected, including mixed scalar/interval conjunctions.</p>
+<h2 id="validation">Validation<a class="headerlink" href="#validation" title="Permanent link">&para;</a></h2>
+<p>Invocation validates the complete parameter set, including defaults and fixed values, before sending a request. Evaluation logs warnings for unlisted option values.</p>
+<table>
+<thead>
+<tr>
+<th>Contract</th>
+<th>Checks</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OpenSearch 1.1</td>
+<td>Required placeholders, integer pagination, URL offsets, declared languages and encodings</td>
+</tr>
+<tr>
+<td>Parameter extension</td>
+<td>Required occurrence, scalar occurrence limits, patterns, inclusive/exclusive numeric or date bounds, numeric steps</td>
+</tr>
+<tr>
+<td>Geo</td>
+<td>WGS84 coordinate limits, ordered latitude bounds, antimeridian boxes, finite coordinates/radius, supported relation values, nonempty 2D WKT syntax and bounds</td>
+</tr>
+<tr>
+<td>Time</td>
+<td>RFC 3339 timestamps with timezone, calendar validity, chronological start/end order</td>
+</tr>
+<tr>
+<td>EO</td>
+<td>Numeric/date scalar, set and interval syntax, integer fields, cloud/snow percentages, specified enumerations, advertised range/set restrictions and member patterns</td>
+</tr>
+<tr>
+<td>SRU</td>
+<td>Integer counts/offsets, record packing, rendering, sort-key flags and facet-sort structure</td>
+</tr>
+<tr>
+<td>EUMETSAT/custom namespaces</td>
+<td>QName mapping and constraints advertised by the service's Parameter elements</td>
+</tr>
+</tbody>
+</table>
+<p>WKT checking is syntactic and dimensional; it does not perform GEOS topology
+validation. String parameters without standard enums or advertised constraints
+remain unrestricted. Unknown extension namespaces do not inherit another
+extension's semantics merely because their prefix or local name matches.</p>
+<p>The adapter supports declared input and output text encodings, defaulting to UTF-8.
+Explicit encoding parameters override declaration defaults; an HTTP response charset
+overrides the output-decoding fallback. Required placeholders need nonempty values.
+Missing optional placeholders are replaced with empty strings; surrounding URL text remains intact. No service defaults are invented.</p>
+<p>URL templates may contain path, authority, fragment, query-name, and composite
+query-value placeholders. The original template is preserved, including repeated
+query keys and fixed literals. Replacement values are percent-encoded once;
+existing literal escapes are not decoded and re-encoded. Missing required values,
+malformed placeholders, ambiguous parameter aliases, unsupported occurrence
+counts, and invalid parameter bindings are rejected. Expansion must produce an
+absolute HTTP(S) URL before a request is sent. Multiple JSON
+results URLs can be selected using <code>url_index</code>. Unknown foreign annotations are
+retained as metadata but do not trigger network requests or dynamic code.</p>
+<h2 id="advertised-options">Advertised options<a class="headerlink" href="#advertised-options" title="Permanent link">&para;</a></h2>
+<p>Parameter <code>Option</code> elements suggest values; they do not establish an exhaustive
+enumeration. The generator preserves their submitted values as tuples
+in <code>PARAMETER_OPTIONS</code>, keyed by HTTP parameter name, and omits labels, without changing the underlying parameter type.
+Handlers log a <code>WARNING</code> immediately for each assigned value missing from its
+advertised options tuple, without rejecting or changing it. Repeated assignments
+and computed values are checked independently, before evaluation completes. Listed values and absent
+parameters are silent. A <code>pattern</code> alongside options is enforced at invocation,
+even for an advertised value. Unlisted values remain valid when they satisfy
+the parameter's other constraints.</p>
+<p>This follows the <a href="https://docs.ogc.org/is/13-026r9/13-026r9.html">OGC EO guidance</a>
+on supplying patterns when options describe only a subset of possible values.
+Closed enumerations require an explicit exhaustive contract; existing
+standard-defined enumerations, such as orbit direction, remain enforced.
+The generator does not infer a service-specific Enum, Literal, or schema enum
+from options alone.</p>
+<h2 id="specification-sources">Specification sources<a class="headerlink" href="#specification-sources" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="https://github.com/dewitt/opensearch/blob/master/mediawiki/Specifications/OpenSearch/1.1/Draft%205.wiki">OpenSearch 1.1 Draft 5</a></li>
+<li><a href="https://docs.ogc.org/is/13-026r9/13-026r9.html">OGC EO extension 13-026r9</a></li>
+<li><a href="https://docs.ogc.org/is/10-032r8/10-032r8.pdf">OGC Geo and Time extensions 10-032r8</a></li>
+<li><a href="https://github.com/dewitt/opensearch/blob/master/mediawiki/Community/Proposal/Specifications/OpenSearch/Extensions/SRU/1.0/Draft%201.wiki">OpenSearch SRU extension</a></li>
+<li><a href="https://api.eumetsat.int/data/search-products/1.0.0/os">EUMETSAT live description</a></li>
+</ul>
+<p>The historical EUMETSAT namespace page could not be recovered from the archive:
+the exact-URL availability query returned no snapshot, and broader archive
+queries returned a temporary outage. Accordingly, EUMETSAT-specific rules are
+read from advertised constraints rather than claimed as a complete historical
+profile implementation. The live description advertises <code>eum:elementSetName</code>
+values <code>full</code> and <code>brief</code>, which are covered by regression tests.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../" class="btn btn-neutral float-left" title="Overview"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/Terradue/osdd2pygeofilter" class="fa fa-code-fork" style="color: #fcfcfc"> Terradue/osdd2pygeofilter</a>
+        </span>
+    
+    
+      <span><a href="../" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="../../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
