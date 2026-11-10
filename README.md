@@ -57,6 +57,7 @@ Run the complete hook explicitly with:
 
 ```console
 task quality:pre-commit:run
+```
 
 ## License
 
