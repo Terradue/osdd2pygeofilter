@@ -120,8 +120,9 @@ def _compile_url(element: _Element) -> tuple[str, tuple[Binding, ...], dict[str,
     # RFC 6570 variable names encode punctuation in arbitrary query names.
     if any(not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.-]*", name) for name in names):
         raise ValueError("Query names must be RFC 6570 simple variable names")
-    uri = parsed._replace(query="").geturl() + ("{?" + ",".join(names) + "}" if names else "")
-    URITemplate(uri)
+    # uri = parsed._replace(query="").geturl() + ("{?" + ",".join(names) + "}" if names else "")
+    # URITemplate(uri)
+    uri = parsed._replace(query="").geturl()
     return uri, tuple(bindings), fixed
 
 
@@ -189,6 +190,13 @@ def render_evaluator(service: _Element, *, url_index: int = 0) -> str:
         uri=uri,
         bindings=bindings,
         fixed=fixed,
+        parameter_options={
+            parameter.get("name"): tuple(
+                option.get("value", "") for option in parameter.findall(f"{{{PARAMETERS}}}Option")
+            )
+            for parameter in element.findall(f"{{{PARAMETERS}}}Parameter")
+            if parameter.find(f"{{{PARAMETERS}}}Option") is not None
+        },
         declarations=declarations,
         index_offset=int(element.get("indexOffset", "1")),
         page_offset=int(element.get("pageOffset", "1")),
@@ -199,8 +207,8 @@ def convert(service: _Element, target: Path, *, url_index: int = 0) -> Path:
     """Write a generated evaluator, creating parents and replacing the target.
 
     Validation and rendering finish before the target is opened. The generated
-    module embeds its validators and requires only pygeofilter, pygeoif and
-    uritemplate at runtime, without importing osdd2pygeofilter.
+    module embeds its validators and requires pygeofilter, pygeoif, and requests
+    at runtime, without importing osdd2pygeofilter.
 
     Args:
         service: Parsed lxml OpenSearchDescription root element.
