@@ -54,9 +54,10 @@ functions return decoded filter parameters without making a request. They accept
 `attribute_map`, mapping application property names to placeholder QNames.
 Each evaluation is independent.
 
-`invoke(parameters, defaults=None)` merges decoded defaults and fixed template
-parameters, validates the complete parameter set, and sends an HTTP GET using
-`requests` with a 30-second timeout. Filter assignments override defaults; fixed
+`invoke(parameters, defaults=None)` merges decoded defaults with supplied
+parameters and validates them. It expands the original `URL_TEMPLATE` in place
+and passes the resulting URL to `requests.get` with a 30-second timeout, without
+a separate `params` argument. Filter assignments override defaults; fixed
 template values cannot be changed. It raises for HTTP errors and returns the
 response's decoded JSON. `invoke_from_cql2_text` and `invoke_from_cql2_json`
 combine conversion and invocation:
@@ -71,13 +72,33 @@ response = invoke_from_cql2_text(
 )
 ```
 
+`URL_TEMPLATE` preserves the selected OSDD `Url/@template` exactly as read from
+XML. Each `{name}` or `{prefix:name?}` occurrence is replaced with its UTF-8
+percent-encoded value. Optional values that are absent become empty strings;
+required values must be supplied. Literal paths, separators, fixed query values,
+existing escapes, repeated keys, and fragments are preserved during expansion.
+The HTTP client may subsequently normalize the URL for transport and does not
+send fragment identifiers to the server.
+
+Whole query-value placeholders retain their query-name aliases (`q={searchTerms}`
+uses `q` in the parameter dictionary). A matching Parameter declaration's `name`
+takes precedence. For path, composite, or ambiguous repeated query bindings,
+the placeholder QName is the default dictionary key. For example,
+`/catalog/{eo:platform}/search/{searchTerms}` accepts `eo:platform` and
+`searchTerms`, unless Parameter declarations give them other names. Repeated
+occurrences of a placeholder share a value; any required occurrence makes the
+value required. These are OpenSearch placeholders, not RFC 6570 expressions
+such as `{?q,count}`. At invocation, a small adapter maps OpenSearch
+placeholders to temporary RFC 6570 variable names. `URITemplate` performs the
+actual expansion and percent encoding; `URL_TEMPLATE` itself stays unchanged.
+
 Quote extension property names in CQL2 text, for example
 `"eo:cloudCover" < 20`. Use `attribute_map` to expose names such as `cloud_cover`.
 The prefix must match the description's placeholder; its meaning is resolved
 using the XML namespace URI, including declarations scoped to a URL.
 
 The generated module requires `pygeofilter`, `pygeoif` (also a dependency
-of pygeofilter), and `requests`. It does not import `osdd2pygeofilter`, Jinja2,
+of pygeofilter), `requests`, and `uritemplate`. It does not import `osdd2pygeofilter`, Jinja2,
 or lxml at runtime. The generator embeds the validation definitions from its
 canonical validation source alongside the Jinja2-rendered handlers. Validation
 fixes take effect in existing modules when you regenerate them.

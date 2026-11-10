@@ -79,8 +79,8 @@ from search_evaluator import invoke
 response = invoke(query)
 ```
 
-This merges defaults and fixed values such as `format=json`, validates them,
-and makes an HTTP GET. Parameters with advertised options log a warning during
+This merges defaults with filter values, validates them, expands the original
+URL template (preserving fixed values such as `format=json`), and makes an HTTP GET. Parameters with advertised options log a warning during
 conversion when their value is not listed; options are suggestions, so this
 warning does not prevent the request.
 
