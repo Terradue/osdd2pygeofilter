@@ -37,7 +37,7 @@ nav:
       - Explanation: explanation/index.md
 
 theme:
-  name: material
+  name: readthedocs
   features:
     - navigation.sections
     - navigation.indexes
