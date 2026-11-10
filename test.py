@@ -11,9 +11,10 @@ import math
 import re
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
+from email.message import Message
 from types import MappingProxyType
 from typing import TYPE_CHECKING, TypeAlias, TypeVar
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 import requests
 
@@ -402,16 +403,26 @@ def _declared_core(
 ) -> None:
     if local in {"startIndex", "startPage"}:
         _integer(value, offsets[local == "startPage"])
-    if local in {"inputEncoding", "outputEncoding"}:
-        try:
-            encoding = codecs.lookup(value)
-        except LookupError as error:
-            raise ValueError(f"Unknown character encoding: {value}") from error
-        if local == "inputEncoding" and encoding.name != "utf-8":
-            raise ValueError("URL expansion supports UTF-8 inputEncoding only")
     advertised = declarations.get(local, ())
-    if advertised and "*" not in advertised:
+    if local in {"inputEncoding", "outputEncoding"}:
+        encoding = character_encoding(value)
+        if advertised and "*" not in advertised:
+            _choice(encoding, tuple(character_encoding(item) for item in advertised))
+    elif advertised and "*" not in advertised:
         _choice(value, advertised)
+
+
+def character_encoding(value: str) -> str:
+    """Resolve a text encoding to its canonical codec name.
+
+    Raises:
+        ValueError: If the name is unknown or does not identify a text encoding.
+    """
+    try:
+        "".encode(value)
+        return codecs.lookup(value).name
+    except LookupError as error:
+        raise ValueError(f"Unknown character encoding: {value}") from error
 
 
 def intersect_ranges(binding: Binding, left: str, right: str) -> str:
@@ -1705,6 +1716,7 @@ DECLARATIONS: Mapping[str, tuple[str, ...]] = MappingProxyType(
 )
 OFFSETS = (1, 1)
 URL_TEMPLATE = "https://api.eumetsat.int/data/search-products/1.0.0/os?pi={eo:parentIdentifier}&pw={startPage?}&si={startIndex?}&c={count?}&id={geo:uid?}&title={eo:title?}&bbox={geo:box?}&geo={geo:geometry?}&dtstart={time:start?}&dtend={time:end?}&sort={sru:sortKeys?}&set={eum:elementSetName?}&format=json"
+METHOD = "GET"
 
 # Generic JSON values, not a service-specific response schema.
 JSONValue: TypeAlias = "bool | int | float | str | list[JSONValue] | dict[str, JSONValue] | None"
@@ -1930,13 +1942,14 @@ def from_cql2_json(
     return to_opensearch(parse_json(expression), attribute_map=attribute_map)
 
 
-def _expand_url(parameters: Mapping[str, str]) -> str:
+def _expand_url(parameters: Mapping[str, str], encoding: str = "utf-8") -> str:
     """Substitute decoded values into the original OpenSearch URL template.
 
     Missing optional values become empty strings. Literal URL text, including
     separators and existing escapes, remains unchanged. A temporary syntax
     adapter maps OpenSearch placeholders to RFC 6570 variables; URITemplate
-    performs expansion and encoding without modifying URL_TEMPLATE.
+    performs expansion without modifying URL_TEMPLATE. Non-UTF-8 values are
+    percent-encoded before expansion to preserve the selected character set.
 
     Raises:
         ValueError: If expansion does not produce an absolute HTTP(S) URL.
@@ -1947,8 +1960,14 @@ def _expand_url(parameters: Mapping[str, str]) -> str:
     def adapt_placeholder(match: re.Match[str]) -> str:
         # OpenSearch QNames and optional suffixes are not RFC 6570 variables.
         name = f"value{len(variables)}"
-        variables[name] = replacements[match[1].removesuffix("?")]
-        return "{" + name + "}"
+        value = replacements[match[1].removesuffix("?")]
+        if encoding == "utf-8":
+            variables[name] = value
+            return "{" + name + "}"
+        # URITemplate encodes strings as UTF-8. Reserved expansion preserves
+        # values already percent-encoded with the advertised character set.
+        variables[name] = quote(value, safe="", encoding=encoding)
+        return "{+" + name + "}"
 
     template = re.sub(r"\{([^{}]+)\}", adapt_placeholder, URL_TEMPLATE)
     url = URITemplate(template).expand(None, **variables)
@@ -1958,11 +1977,35 @@ def _expand_url(parameters: Mapping[str, str]) -> str:
     return url
 
 
+def _select_encoding(parameters: dict[str, str], local: str) -> str:
+    """Select an explicit encoding, the first declaration, or UTF-8.
+
+    Populate the corresponding placeholder when it has no supplied value.
+    """
+    binding = next(
+        (item for item in BINDINGS if (item.namespace, item.local) == (CORE, local)), None
+    )
+    declared = DECLARATIONS.get(local, ())
+    fallback = next((value for value in declared if value != "*"), "UTF-8")
+    selected = parameters.get(binding.query, fallback) if binding is not None else fallback
+    encoding = character_encoding(selected)
+    if binding is not None:
+        parameters.setdefault(binding.query, selected)
+    return encoding
+
+
+def _set_response_encoding(response: requests.Response, fallback: str) -> None:
+    """Apply the output encoding unless the HTTP response declares a charset."""
+    headers = Message()
+    headers["Content-Type"] = response.headers.get("Content-Type", "")
+    response.encoding = headers.get_content_charset() or fallback
+
+
 def invoke(
     result: dict[str, str],
     defaults: Mapping[str, str] | None = None,
 ) -> JSONValue:
-    """Validate parameters, send an HTTP GET, and decode the JSON response.
+    """Validate parameters, invoke the declared HTTP method, and decode JSON.
 
     Raises:
         ValueError: If parameters or the JSON response are invalid.
@@ -1976,13 +2019,17 @@ def invoke(
             raise ValueError(f"Cannot override fixed parameter: {key}")
         if key not in allowed and key not in FIXED:
             raise ValueError(f"Unknown query parameter: {key}")
+    input_encoding = _select_encoding(supplied, "inputEncoding")
+    output_encoding = _select_encoding(supplied, "outputEncoding")
     validate_parameters(BINDINGS, supplied, DECLARATIONS, OFFSETS)
 
-    response = requests.get(
-        _expand_url(supplied),
+    response = requests.request(
+        METHOD,
+        _expand_url(supplied, input_encoding),
         timeout=30,
     )
     response.raise_for_status()
+    _set_response_encoding(response, output_encoding)
     payload: object = response.json()
     if not _is_json_value(payload):
         raise ValueError("Expected a JSON response value")

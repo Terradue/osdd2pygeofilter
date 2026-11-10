@@ -67,10 +67,12 @@ validation. String parameters without standard enums or advertised constraints
 remain unrestricted. Unknown extension namespaces do not inherit another
 extension's semantics merely because their prefix or local name matches.
 
-The adapter accepts UTF-8 input encoding declarations. Required placeholders need nonempty values.
+The adapter supports declared input and output text encodings, defaulting to UTF-8.
+Explicit encoding parameters override declaration defaults; an HTTP response charset
+overrides the output-decoding fallback. Required placeholders need nonempty values.
 Missing optional placeholders are replaced with empty strings; surrounding URL text remains intact. No service defaults are invented.
 
-GET templates may contain path, authority, fragment, query-name, and composite
+URL templates may contain path, authority, fragment, query-name, and composite
 query-value placeholders. The original template is preserved, including repeated
 query keys and fixed literals. Replacement values are percent-encoded once;
 existing literal escapes are not decoded and re-encoded. Missing required values,

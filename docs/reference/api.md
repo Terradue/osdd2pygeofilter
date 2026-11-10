@@ -56,7 +56,7 @@ Each evaluation is independent.
 
 `invoke(parameters, defaults=None)` merges decoded defaults with supplied
 parameters and validates them. It expands the original `URL_TEMPLATE` in place
-and passes the resulting URL to `requests.get` with a 30-second timeout, without
+and passes the resulting URL to `requests.request(METHOD, url, timeout=30)` with a 30-second timeout, without
 a separate `params` argument. Filter assignments override defaults; fixed
 template values cannot be changed. It raises for HTTP errors and returns the
 response's decoded JSON. `invoke_from_cql2_text` and `invoke_from_cql2_json`
@@ -73,7 +73,7 @@ response = invoke_from_cql2_text(
 ```
 
 `URL_TEMPLATE` preserves the selected OSDD `Url/@template` exactly as read from
-XML. Each `{name}` or `{prefix:name?}` occurrence is replaced with its UTF-8
+XML. Each `{name}` or `{prefix:name?}` occurrence is replaced with its
 percent-encoded value. Optional values that are absent become empty strings;
 required values must be supplied. Literal paths, separators, fixed query values,
 existing escapes, repeated keys, and fragments are preserved during expansion.
@@ -90,7 +90,21 @@ occurrences of a placeholder share a value; any required occurrence makes the
 value required. These are OpenSearch placeholders, not RFC 6570 expressions
 such as `{?q,count}`. At invocation, a small adapter maps OpenSearch
 placeholders to temporary RFC 6570 variable names. `URITemplate` performs the
-actual expansion and percent encoding; `URL_TEMPLATE` itself stays unchanged.
+actual expansion and UTF-8 percent encoding; other input encodings use
+`urllib.parse.quote` before reserved expansion to preserve encoded escapes.
+`URL_TEMPLATE` itself stays unchanged.
+
+`METHOD` comes from the selected URL’s `method` or Parameters-extension
+`p:method` attribute and defaults to `GET`. Invocation sends the expanded URL
+with that method; it does not construct a request body.
+
+Input and output encodings use the explicit parameter value, then the first
+concrete `InputEncoding` or `OutputEncoding` declaration, then UTF-8. Encoding
+placeholders are populated with this selection when omitted. Codec aliases are
+accepted when they match an advertised encoding. Input encoding controls URL
+value percent encoding; output encoding controls JSON response decoding unless
+the response declares an HTTP charset, which takes precedence. Unknown codecs
+and input characters that cannot be encoded fail before a request is sent.
 
 Quote extension property names in CQL2 text, for example
 `"eo:cloudCover" < 20`. Use `attribute_map` to expose names such as `cloud_cover`.
