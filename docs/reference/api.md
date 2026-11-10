@@ -111,3 +111,23 @@ values, missing required parameters and conflicting assignments raise
 `ValueError`.
 
 ::: osdd2pygeofilter.converter
+
+## Generated source quality
+
+Generated modules are formatted for the project's 100-column Ruff configuration
+and checked with its strict mypy and Bandit settings. Run
+`hatch run dev:generated-check` to verify representative outputs, including
+empty bindings, empty metadata maps, and escaped option values. This check is
+included in the development quality and check commands.
+
+The emitted source has typed parameter metadata and a recursive `JSONValue`
+alias for decoded JSON responses (objects, arrays, scalars, or null). The alias
+expresses JSON syntax, not a service-specific response schema. Invocation
+validates values returned across the HTTP client's untyped JSON boundary.
+
+Pygeofilter 0.4.0 does not ship a `py.typed` marker. The template documents narrow
+`import-untyped` exceptions for its imports and a `misc` exception for inheriting
+its untyped evaluator. A typed handler-registration adapter preserves method
+signatures; evaluator results are checked before exposing parameter dictionaries.
+No host-wide mypy override is needed. Revisit these dependency exceptions when
+upgrading to a pygeofilter release that publishes typing metadata.

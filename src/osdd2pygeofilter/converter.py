@@ -6,7 +6,9 @@ Only JSON results URLs are eligible. Compilation does not contact the service.
 from __future__ import annotations
 
 import ast
+import json
 import re
+from functools import partial
 from importlib.resources import files
 from typing import TYPE_CHECKING
 from urllib.parse import parse_qsl, urlsplit
@@ -144,15 +146,13 @@ def _validation_source() -> str:
     """
     source = files("osdd2pygeofilter").joinpath("validation.py").read_text(encoding="utf-8")
     lines = source.splitlines(keepends=True)
-    definitions: list[str] = []
     for node in ast.parse(source).body:
-        if not isinstance(node, (ast.Assign, ast.AnnAssign, ast.ClassDef, ast.FunctionDef)):
-            continue
-        start = node.lineno
-        if isinstance(node, (ast.ClassDef, ast.FunctionDef)) and node.decorator_list:
-            start = node.decorator_list[0].lineno
-        definitions.append("".join(lines[start - 1 : node.end_lineno]).rstrip())
-    return "\n\n\n".join(definitions)
+        if isinstance(node, (ast.Assign, ast.AnnAssign, ast.ClassDef, ast.FunctionDef)):
+            start = node.lineno
+            if isinstance(node, (ast.ClassDef, ast.FunctionDef)) and node.decorator_list:
+                start = node.decorator_list[0].lineno
+            return "".join(lines[start - 1 :]).rstrip()
+    raise ValueError("Validation source has no definitions")
 
 
 def render_evaluator(service: _Element, *, url_index: int = 0) -> str:
@@ -183,8 +183,10 @@ def render_evaluator(service: _Element, *, url_index: int = 0) -> str:
         undefined=StrictUndefined,
         autoescape=select_autoescape(),
         keep_trailing_newline=True,
+        trim_blocks=True,
+        lstrip_blocks=True,
     )
-    environment.filters["python"] = repr
+    environment.filters["python"] = partial(json.dumps, ensure_ascii=False)
     return environment.get_template("evaluator.py.j2").render(
         validation_source=_validation_source(),
         uri=uri,

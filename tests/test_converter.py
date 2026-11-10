@@ -31,7 +31,7 @@ class GeneratedModule(Protocol):
         attribute_map: Mapping[str, str] | None = None,
     ) -> dict[str, str]: ...
 
-    def from_cql2_json(self, expression: str) -> dict[str, str]: ...
+    def from_cql2_json(self, expression: str | dict[str, object]) -> dict[str, str]: ...
 
     def invoke(
         self, result: dict[str, str], defaults: Mapping[str, str] | None = None
@@ -275,6 +275,7 @@ def test_url_selection_and_determinism() -> None:
 def test_source_literals_are_escaped(tmp_path: Path) -> None:
     generated = generate(tmp_path, service("https://example.test/?q={searchTerms?}&fixed='quoted'"))
     with patch("requests.get") as request:
+        request.return_value.json.return_value = {}
         generated.invoke_from_cql2_text("searchTerms = 'ice'")
     assert request.call_args.kwargs["params"] == {"q": "ice", "fixed": "'quoted'"}
     with pytest.raises(ValueError, match="fixed"):
@@ -487,6 +488,7 @@ def test_options_do_not_override_standard_enum(tmp_path: Path) -> None:
 
 def test_defaults_are_validated_and_filter_values_take_precedence(adapter: GeneratedModule) -> None:
     with patch("requests.get") as request:
+        request.return_value.json.return_value = {}
         adapter.invoke_from_cql2_text("count = 4", defaults={"n": "2"})
     assert request.call_args.kwargs["params"]["n"] == "4"
     with pytest.raises(ValueError, match="Unknown"):
@@ -556,3 +558,41 @@ def test_invocation_accepts_unlisted_options_and_sends_decoded_parameters(
     request.return_value.raise_for_status.assert_called_once_with()
     assert len(caplog.records) == 1
     assert "snow & ice" in caplog.text
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [None, True, 5, 1.5, "text", [1, "two", None], {"features": [{"id": "one"}]}],
+)
+def test_invocation_preserves_json_response_types(
+    adapter: GeneratedModule, payload: object
+) -> None:
+    with patch("requests.get") as request:
+        request.return_value.json.return_value = payload
+        assert adapter.invoke({"q": "ice"}) == payload
+
+
+def test_json_conversion_accepts_decoded_objects(adapter: GeneratedModule) -> None:
+    assert adapter.from_cql2_json({"op": "=", "args": [{"property": "count"}, 4]}) == {"n": "4"}
+
+
+@pytest.mark.parametrize("payload", [{1: "non-string key"}, {"value": object()}])
+def test_invocation_rejects_non_json_response_values(
+    adapter: GeneratedModule, payload: object
+) -> None:
+    with patch("requests.get") as request:
+        request.return_value.json.return_value = payload
+        with pytest.raises(ValueError, match="JSON"):
+            adapter.invoke({"q": "ice"})
+
+
+def test_generated_option_literals_preserve_non_bmp_unicode(tmp_path: Path) -> None:
+    generated = generate(
+        tmp_path,
+        service(
+            "https://example.test/?q={searchTerms?}",
+            '<p:Parameter name="q" value="{searchTerms?}"><p:Option value="🛰️雪"/></p:Parameter>',
+        ),
+    )
+    assert generated.PARAMETER_OPTIONS == {"q": ("🛰️雪",)}
+    assert generated.from_cql2_text("searchTerms = '🛰️雪'") == {"q": "🛰️雪"}
