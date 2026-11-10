@@ -86,11 +86,15 @@ fixes take effect in existing modules when you regenerate them.
 values, for example `{"platform": ("Sentinel-1", "Sentinel-2")}`. Option labels
 are omitted. Options alone do not restrict accepted values or imply an enum.
 
-At the end of each evaluator call, a final parameter value absent from its
-advertised tuple produces one `WARNING` log record. Listed values, absent
+Whenever a handler assigns a parameter value absent from its advertised tuple,
+it immediately emits a `WARNING` log record. Listed values, absent
 parameters, and parameters without options produce no warning. Comparison uses
 the complete decoded value, including any range, set, or sort syntax.
-The value remains in the result and can be submitted by the invocation helpers.
+Repeated assignments are checked separately. Computed interval intersections
+and spatial relation assignments are also checked; copying already checked
+values while merging predicates does not add warnings. Warnings can therefore
+be emitted even when a later part of the expression fails. The value remains
+unchanged and can be submitted by the invocation helpers.
 Patterns and standard-defined enumerations are still validated at invocation.
 
 Warnings use Python's standard `logging` module, under the generated module's
@@ -129,5 +133,10 @@ Pygeofilter 0.4.0 does not ship a `py.typed` marker. The template documents narr
 `import-untyped` exceptions for its imports and a `misc` exception for inheriting
 its untyped evaluator. A typed handler-registration adapter preserves method
 signatures; evaluator results are checked before exposing parameter dictionaries.
+`@_handle` calls the original `handle` decorator to register each function, then
+returns that same function with its generic callable type preserved. The leading
+underscore marks this as an internal helper; it does not change dispatch behavior.
+Using the untyped upstream decorator directly would erase handler signatures
+and trigger strict mypy's `untyped-decorator` errors.
 No host-wide mypy override is needed. Revisit these dependency exceptions when
 upgrading to a pygeofilter release that publishes typing metadata.

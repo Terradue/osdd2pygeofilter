@@ -81,8 +81,9 @@ retained as metadata but do not trigger network requests or dynamic code.
 Parameter `Option` elements suggest values; they do not establish an exhaustive
 enumeration. The generator preserves their submitted values as tuples
 in `PARAMETER_OPTIONS`, keyed by HTTP parameter name, and omits labels, without changing the underlying parameter type.
-Evaluation logs a `WARNING` for each final value missing from its advertised
-options tuple, without rejecting or changing it. Listed values and absent
+Handlers log a `WARNING` immediately for each assigned value missing from its
+advertised options tuple, without rejecting or changing it. Repeated assignments
+and computed values are checked independently, before evaluation completes. Listed values and absent
 parameters are silent. A `pattern` alongside options is enforced at invocation,
 even for an advertised value. Unlisted values remain valid when they satisfy
 the parameter's other constraints.
