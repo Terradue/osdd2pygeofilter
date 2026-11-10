@@ -86,3 +86,6 @@ warning does not prevent the request.
 
 Next, learn about [remote sources and authentication](../how-to/use-cli.md) and
 [which queries are supported](../explanation/architecture.md).
+
+For a complete live-service example, continue with
+[Search EUMETSAT products with CQL2](eumetsat.md).

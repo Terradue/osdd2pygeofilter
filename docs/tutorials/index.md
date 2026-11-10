@@ -18,3 +18,6 @@ limitations under the License.
 
 [Generate your first evaluator](first-steps.md) walks through a local description,
 CLI invocation, and CQL2 conversion with the generated module.
+
+[Search EUMETSAT products with CQL2](eumetsat.md) uses a live catalogue,
+equivalent text and JSON filters, generated invocation helpers, and CSV export.
